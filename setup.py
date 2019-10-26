@@ -1,15 +1,16 @@
 from distutils.core import setup, Extension
 
-# Tutorial - https://realpython.com/build-python-c-extension-module/
 
 def main():
     setup(
         name="pyfaasm",
-        version="1.0.0",
+        version="0.0.3",
         description="Python interface for Faasm",
         author="Simon S",
         author_email="foo@bar.com",
-        ext_modules=[Extension("pyfaasm", ["pyfaasm.c"])]
+        ext_modules=[
+            Extension("pyfaasm", ["pyfaasm/pyfaasm.c"])
+        ]
     )
 
 
