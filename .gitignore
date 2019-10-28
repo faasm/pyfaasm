@@ -1,2 +1,4 @@
 build/
 dist/
+
+pyfaasm.egg-info/
