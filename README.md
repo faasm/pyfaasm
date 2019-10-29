@@ -26,7 +26,7 @@ When publishing an update you'll need to bump the version.
 pip install twine
 
 # Clear existing dist and build
-rm -rf dist/
+rm -rf dist/ build/
 python setup.py sdist
 
 # Check
