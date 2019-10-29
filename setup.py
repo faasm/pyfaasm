@@ -10,7 +10,7 @@ def main():
     setup(
         name=PKG_NAME,
         packages=[PKG_NAME],
-        version="0.0.6",
+        version="0.0.8",
         description="Python interface for Faasm",
         long_description="""## Faasm Python bindings\nSee main repo at https://github.com/lsds/Faasm.""",
         long_description_content_type="text/markdown",

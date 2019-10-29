@@ -18,7 +18,7 @@ python tester.py
 
 ## Publishing
 
-When publishing an update you'll need to bump the version.
+When publishing an update you'll need to bump the version in `setup.py`.
 
 ```
 # If not already installed
@@ -52,5 +52,6 @@ Finally, in a new shell at the root of the Faasm project you need to run:
  
 ```
 source workon.sh
+pip install -U pyfaasm
 inv set-up-python-package pyfaasm
 ```

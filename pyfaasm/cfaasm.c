@@ -1,6 +1,9 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+// Must make sure resulting wasm imports the Faasm interface funcs
+#define FAASM_IMPORT extern
+
 // Some useful notes
 // - Tutorial - https://realpython.com/build-python-c-extension-module/
 // - Official tutorial - https://docs.python.org/3/extending/extending.html
@@ -9,10 +12,10 @@
 // - Bytes objects - https://docs.python.org/3/c-api/bytes.html
 
 // ------ Faasm core functions ------
-__attribute__((weak))
+FAASM_IMPORT
 long __faasm_read_input(unsigned char *buffer, long bufferLen);
 
-__attribute__((weak))
+FAASM_IMPORT
 void __faasm_write_output(const unsigned char *output, long outputLen);
 
 // Tester function
