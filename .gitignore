@@ -2,3 +2,6 @@ build/
 dist/
 
 pyfaasm.egg-info/
+
+__pycache__/
+*.pyc

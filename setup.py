@@ -7,12 +7,13 @@ except ImportError:
 def main():
     setup(
         name="pyfaasm",
-        version="0.0.4",
+        packages=["pyfaasm"],
+        version="0.0.5",
         description="Python interface for Faasm",
         author="Simon S",
         author_email="foo@bar.com",
         ext_modules=[
-            Extension("pyfaasm", ["pyfaasm/pyfaasm.c"])
+            Extension("_native", ["pyfaasm/native.c"])
         ]
     )
 
