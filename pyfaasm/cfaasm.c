@@ -61,7 +61,7 @@ static PyObject *faasm_set_output(PyObject *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyMethodDef _native_methods[] = {
+static PyMethodDef cfaasm_methods[] = {
         {"hello_faasm", (PyCFunction) hello_faasm, METH_NOARGS, NULL},
         {"check_input", (PyCFunction) check_input, METH_NOARGS, NULL},
         {"faasm_get_input", (PyCFunction) faasm_get_input, METH_NOARGS, NULL},
@@ -69,15 +69,15 @@ static PyMethodDef _native_methods[] = {
         {NULL, NULL, 0, NULL}
 };
 
-static struct PyModuleDef _nativemodule = {
+static struct PyModuleDef cfaasmmodule = {
         PyModuleDef_HEAD_INIT,
-        "_native",
+        "cfaasm",
         "C bindings for Faasm functions",
         -1,
-        _native_methods
+        cfaasm_methods
 };
 
 PyMODINIT_FUNC
-PyInit__native(void) {
-    return PyModule_Create(&_nativemodule);
+PyInit_cfaasm(void) {
+    return PyModule_Create(&cfaasmmodule);
 }

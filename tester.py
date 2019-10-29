@@ -1,3 +1,3 @@
-from pyfaasm import checkPythonBindings
+from pyfaasm.core import checkPythonBindings
 
 checkPythonBindings()

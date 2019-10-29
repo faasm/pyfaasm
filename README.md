@@ -38,21 +38,20 @@ twine upload dist/*
 
 ## Updating in Pyodide and Faasm
 
-You will need to update the file in Pyodide at `packages/pyfaasm/meta.yml` with the latest SHA and
-file link from https://pypi.org/project/pyfaasm/.
-
-You can then run:
+Run the following in Faasm:
 
 ```
 cd third-party/pyodide
 source workon.sh
+bin/pyodide mkpkg pyfaasm
 cd packages
 rm -rf pyfaasm/build
 ../bin/pyodide buildpkg --package_abi=0 pyfaasm/meta.yaml
 ```
-
-Finally you need to edit `tasks/python.py` in Faasm and can run:
-
+ 
+Finally, in a new shell at the root of the Faasm project you need to run:
+ 
 ```
+source workon.sh
 inv set-up-python-package pyfaasm
 ```
