@@ -9,9 +9,6 @@ Python bindings for Faasm host interface.
 python3 -m venv venv
 source venv/bin/activate
 
-# Build
-python setup.py build
-
 # Install locally
 pip install -e .
 
