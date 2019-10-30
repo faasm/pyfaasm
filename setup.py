@@ -1,3 +1,5 @@
+from os.path import join
+
 try:
     from setuptools import setup, Extension
 except ImportError:
@@ -6,11 +8,13 @@ except ImportError:
 
 def main():
     PKG_NAME = "pyfaasm"
+    FAASM_LIBS = ["faasm", "emulator"]
+    FAASM_INSTALL = "/usr/local/faasm/install/"
 
     setup(
         name=PKG_NAME,
         packages=[PKG_NAME],
-        version="0.0.8",
+        version="0.0.10",
         description="Python interface for Faasm",
         long_description="""## Faasm Python bindings\nSee main repo at https://github.com/lsds/Faasm.""",
         long_description_content_type="text/markdown",
@@ -18,7 +22,13 @@ def main():
         author_email="foo@bar.com",
         url="https://github.com/lsds/Faasm",
         ext_modules=[
-            Extension("pyfaasm.cfaasm", ["pyfaasm/cfaasm.c"])
+            Extension(
+                "pyfaasm.cfaasm",
+                sources=["pyfaasm/cfaasm.c"],
+                libraries=FAASM_LIBS,
+                library_dirs=[join(FAASM_INSTALL, "lib")],
+                include_dirs=[join(FAASM_INSTALL, "include")],
+            )
         ]
     )
 

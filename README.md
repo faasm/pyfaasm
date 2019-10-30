@@ -2,6 +2,15 @@
 
 Python bindings for Faasm host interface.
 
+## Installing native Faasm tools
+
+To test integration with Faasm via the emulator, in the Faasm project root:
+
+```
+source workon.sh
+inv install-native-tools
+```
+
 ## Build and test
 
 ```
@@ -13,7 +22,7 @@ source venv/bin/activate
 pip install -e .
 
 # Run tester
-python tester.py
+./run_tester.sh
 ```
 
 ## Publishing

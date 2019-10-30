@@ -10,7 +10,7 @@ def checkPythonBindings():
     actual_input = cf.check_input()
     expected_input = b'01234'
     if type(actual_input == bytes) and actual_input == expected_input:
-        print("Got expected input {}".format(actual_input))
+        print("Got expected input {} (expected {})".format(actual_input, expected_input))
     else:
         print("Did not get expected input (expected {}, actual {})".format(expected_input, actual_input))
 
@@ -24,11 +24,11 @@ def setOutput(output):
 
 
 def getState(key, len):
-    cf.faasm_get_state(key, len)
+    return cf.faasm_get_state(key, len)
 
 
 def getStateOffset(key, total_len, offset, offset_len):
-    cf.faasm_get_state_offset(key, total_len, offset, offset_len)
+    return cf.faasm_get_state_offset(key, total_len, offset, offset_len)
 
 
 def setState(key, value):
@@ -37,3 +37,11 @@ def setState(key, value):
 
 def setStateOffset(key, total_len, offset, value):
     cf.faasm_set_state_offset(key, total_len, offset, value)
+
+
+def pushState(key):
+    cf.faasm_push_state(key)
+
+
+def pullState(key, state_len):
+    cf.faasm_pull_state(key, state_len)
