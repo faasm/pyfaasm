@@ -21,3 +21,19 @@ def getInput():
 
 def setOutput(output):
     cf.faasm_set_output(output)
+
+
+def getState(key, len):
+    cf.faasm_get_state(key, len)
+
+
+def getStateOffset(key, total_len, offset, offset_len):
+    cf.faasm_get_state_offset(key, total_len, offset, offset_len)
+
+
+def setState(key, value):
+    cf.faasm_set_state(key, value)
+
+
+def setStateOffset(key, total_len, offset, value):
+    cf.faasm_set_state_offset(key, total_len, offset, value)
