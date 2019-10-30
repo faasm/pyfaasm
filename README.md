@@ -18,11 +18,14 @@ inv install-native-tools
 python3 -m venv venv
 source venv/bin/activate
 
-# Install locally
+# Install deps
+pip install -r test_requirements.txt
+
+# Install this module locally
 pip install -e .
 
-# Run tester
-./run_tester.sh
+# Run tests
+./run_tests.sh
 ```
 
 ## Publishing
