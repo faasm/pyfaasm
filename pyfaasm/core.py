@@ -29,6 +29,9 @@ def checkPythonBindings():
     else:
         print("Did not get expected input (expected {}, actual {})".format(expected_input, actual_input))
 
+    # Check function index
+    print("Function idx = {}".format(getFunctionIdx()))
+
 
 def getInput():
     return cf.faasm_get_input()
@@ -63,7 +66,7 @@ def pullState(key, state_len):
 
 
 def getFunctionIdx():
-    return cf.get_function_idx()
+    return cf.faasm_get_idx()
 
 
 def chainThisWithInput(function_idx, input_data):

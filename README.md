@@ -33,18 +33,7 @@ pip install -e .
 When publishing an update you'll need to bump the version in `setup.py`.
 
 ```
-# If not already installed
-pip install twine
-
-# Clear existing dist and build
-rm -rf dist/ build/
-python setup.py sdist
-
-# Check
-twine check dist/*
-
-# Upload
-twine upload dist/*
+./release.sh
 ```
 
 ## Updating in Pyodide and Faasm
@@ -54,12 +43,14 @@ Run the following in Faasm:
 ```
 cd third-party/pyodide
 source workon.sh
-bin/pyodide mkpkg pyfaasm
 cd packages
 rm -rf pyfaasm/build
+../bin/pyodide mkpkg pyfaasm
 ../bin/pyodide buildpkg --package_abi=0 pyfaasm/meta.yaml
 ```
- 
+
+Make sure the output of the last function references the latest version.
+
 Finally, in a new shell at the root of the Faasm project you need to run:
  
 ```

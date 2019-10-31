@@ -49,7 +49,7 @@ unsigned int __faasm_chain_this(int idx, const unsigned char *inputData, long in
 FAASM_IMPORT
 int __faasm_await_call(unsigned int messageId);
 
-HOST_IFACE_FUNC
+FAASM_IMPORT
 int __faasm_get_idx();
 
 
@@ -218,14 +218,13 @@ static PyObject *faasm_chain_this(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    __faasm_chain_this(
+    int callId = __faasm_chain_this(
         functionIdx,
-        (unsigned char*) PyBytes_AsString(value),
-        PyBytes_Size(value)
+        (unsigned char*) PyBytes_AsString(inputData),
+        PyBytes_Size(inputData)
     );
 
-
-    Py_RETURN_NONE;
+    return Py_BuildValue("i", callId);
 }
 
 static PyObject *faasm_await_call(PyObject *self, PyObject *args) {
@@ -241,7 +240,7 @@ static PyObject *faasm_await_call(PyObject *self, PyObject *args) {
 }
 
 static PyObject *faasm_get_idx(PyObject *self) {
-    unsigned int idx = __faasm_get_idx();
+    int idx = (int) __faasm_get_idx();
     return Py_BuildValue("i", idx);
 }
 
