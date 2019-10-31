@@ -1,2 +1,4 @@
+keyring
 numpy
 redis
+twine

@@ -36,6 +36,14 @@ When publishing an update you'll need to bump the version in `setup.py`.
 ./release.sh
 ```
 
+To avoid entering your PyPi password every time, set up `keyring` as described [here](https://pypi.org/project/twine/). It's basically:
+
+```
+apt install python3-dbus
+pip install keyring
+python -m keyring set https://upload.pypi.org/legacy/ <YOUR_USERNAME>
+```
+
 ## Updating in Pyodide and Faasm
 
 Run the following in Faasm:
