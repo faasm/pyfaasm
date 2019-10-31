@@ -1,6 +1,7 @@
 import numpy as np
 
-from pyfaasm.core import setState, getStateOffset, getState, getFunctionIdx, chainThisWithInput, awaitThis, getInput
+from pyfaasm.core import setState, getStateOffset, getState, getFunctionIdx, chainThisWithInput, awaitCall, getInput, \
+    setStateOffset
 
 # Work out the item size in a matrix by creating a dummy matrix
 NP_ELEMENT_SIZE = np.array([1.1, 1.1], [1.1, 1.1]).itemsize
@@ -8,8 +9,8 @@ NP_ELEMENT_SIZE = np.array([1.1, 1.1], [1.1, 1.1]).itemsize
 # Remember we're dealing with square matrices and splitting the matrix into
 # four pieces each time we do the divide in the divide and conquer.
 # The number of splits is how many times we're dividing the origin matrices.
-MATRIX_SIZE = 12000
-N_SPLITS = 3
+MATRIX_SIZE = 8
+N_SPLITS = 2
 SUBMATRICES_PER_ROW = 2 ** N_SPLITS
 SUBMATRIX_SIZE = MATRIX_SIZE // SUBMATRICES_PER_ROW
 BYTES_PER_SUBMATRIX = SUBMATRIX_SIZE * SUBMATRIX_SIZE * NP_ELEMENT_SIZE
@@ -83,49 +84,33 @@ def reconstruct_matrix_from_submatrices(key):
     return result
 
 
-def do_multiplication(split_number, row_idx, col_idx):
-    if split_number < N_SPLITS:
-        # Do a further split and pass on. In the next split we're doubling the
-        # number of submatrices in each row and column, so we double the row
-        # and column indices
-        split_number += 1
-        row_idx *= 2
-        col_idx *= 2
+def do_multiplication(row_idx, col_idx):
+    # Read in the four quadrants of each input matrix
+    mat_aa = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx, col_idx)
+    mat_ab = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx, col_idx + 1)
+    mat_ac = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx + 1, col_idx)
+    mat_ad = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx + 1, col_idx + 1)
 
-        # Do multiplication on the four submatrices
-        call_a = do_multiplication(split_number, row_idx, col_idx)
-        call_b = do_multiplication(split_number, row_idx, col_idx + 1)
-        call_c = do_multiplication(split_number, row_idx + 1, col_idx)
-        call_d = do_multiplication(split_number, row_idx + 1, col_idx + 1)
+    mat_ba = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx, col_idx)
+    mat_bb = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx, col_idx + 1)
+    mat_bc = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx + 1, col_idx)
+    mat_bd = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx + 1, col_idx + 1)
 
-        awaitCall(call_a)
-        awaitCall(call_b)
-        awaitCall(call_c)
-        awaitCall(call_d)
-    else:
-        # We're at the target number of splits, so do the multiplication
-        # Read in the four quadrants of each input matrix
-        mat_aa = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx, col_idx)
-        mat_ab = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx, col_idx + 1)
-        mat_ac = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx + 1, col_idx)
-        mat_ad = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx + 1, col_idx + 1)
+    # Do the actual multiplication
+    r_a = np.dot(mat_aa, mat_ba) + np.dot(mat_ab, mat_bc)
+    r_b = np.dot(mat_aa, mat_bb) + np.dot(mat_ab, mat_bd)
+    r_c = np.dot(mat_ac, mat_ba) + np.dot(mat_ad, mat_bc)
+    r_d = np.dot(mat_ac, mat_bb) + np.dot(mat_ad, mat_bd)
 
-        mat_ba = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx, col_idx)
-        mat_bb = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx, col_idx + 1)
-        mat_bc = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx + 1, col_idx)
-        mat_bd = read_submatrix_from_state(SUBMATRICES_KEY_B, row_idx + 1, col_idx + 1)
+    # Construct the result
+    result = np.concatenate((
+        np.concatenate((r_a, r_b), axis=1),
+        np.concatenate((r_c, r_d), axis=1)
+    ), axis=0)
 
-        r_a = np.dot(mat_aa, mat_ba) + np.dot(mat_ab, mat_bc)
-        r_b = np.dot(mat_aa, mat_bb) + np.dot(mat_ab, mat_bd)
-        r_c = np.dot(mat_ac, mat_ba) + np.dot(mat_ad, mat_bc)
-        r_d = np.dot(mat_ac, mat_bb) + np.dot(mat_ad, mat_bd)
-
-        result = np.concatenate((
-            np.concatenate((r_a, r_b), axis=1),
-            np.concatenate((r_c, r_d), axis=1)
-        ), axis=0)
-
-        # Persist the result
+    # Write to state
+    result_offset = _get_submatrix_byte_offset(row_idx, col_idx)
+    setStateOffset(RESULT_MATRIX_KEY, TOTAL_BYTES_PER_MATRIX, result_offset, result.tobytes())
 
 
 def main():
@@ -158,16 +143,15 @@ def main():
     subdivide_matrix_into_state(a, SUBMATRICES_KEY_A)
     subdivide_matrix_into_state(b, SUBMATRICES_KEY_B)
 
-    # Kick off the multiplication on the four quadrants initially
-    args_a = np.array([0, 0, 0])
-    args_b = np.array([0, 0, 1])
-    args_c = np.array([0, 1, 0])
-    args_d = np.array([0, 1, 1])
+    # Kick off all the multiplication jobs
+    call_ids = []
+    for row_idx in range(0, SUBMATRICES_PER_ROW):
+        for col_idx in range(0, SUBMATRICES_PER_ROW):
+            call_id = chainThisWithInput(1, [row_idx, col_idx])
+            call_ids.append(call_id)
 
-    call_a = chainThisWithInput(1, args_a.tobytes())
-    call_b = chainThisWithInput(1, args_b.tobytes())
-    call_c = chainThisWithInput(1, args_c.tobytes())
-    call_d = chainThisWithInput(1, args_d.tobytes())
+    for call_id in call_ids:
+        awaitCall(call_id)
 
     # Load the result
     result = reconstruct_matrix_from_submatrices(RESULT_MATRIX_KEY)
@@ -185,10 +169,8 @@ if __name__ == "__main__":
         input_bytes = getInput()
         input_args = np.frombuffer(input_bytes, dtype=int)
 
-        step = input_args[0]
-        row = input_args[1]
-        col = input_args[2]
+        row = input_args[0]
+        col = input_args[1]
 
-        print("Doing multiplication STEP {} ROW {} COL {}".format(step, row, col))
-        do_multiplication(step, row, col)
-
+        print("Doing multiplication ROW {} COL {}".format(row, col))
+        do_multiplication(row, col)

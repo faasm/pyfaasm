@@ -45,3 +45,15 @@ def pushState(key):
 
 def pullState(key, state_len):
     cf.faasm_pull_state(key, state_len)
+
+
+def getFunctionIdx():
+    pass
+
+
+def chainThisWithInput(function_idx, input_data):
+    pass
+
+
+def awaitCall(call_id):
+    pass
