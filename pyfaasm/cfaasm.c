@@ -42,6 +42,17 @@ void __faasm_push_state(const char *key);
 FAASM_IMPORT
 void __faasm_pull_state(const char *key, long stateLen);
 
+// ------ Faasm chaining ------
+FAASM_IMPORT
+unsigned int __faasm_chain_this(int idx, const unsigned char *inputData, long inputDataSize);
+
+FAASM_IMPORT
+int __faasm_await_call(unsigned int messageId);
+
+HOST_IFACE_FUNC
+int __faasm_get_idx();
+
+
 // ----------------------------------
 // Byte handling
 // ----------------------------------
@@ -196,6 +207,43 @@ static PyObject *faasm_pull_state(PyObject *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+// ----------------------------------
+// Chaining
+// ----------------------------------
+
+static PyObject *faasm_chain_this(PyObject *self, PyObject *args) {
+    int functionIdx = 0;
+    PyObject* inputData = NULL;
+    if(!PyArg_ParseTuple(args, "iS", &functionIdx, &inputData)) {
+        return NULL;
+    }
+
+    __faasm_chain_this(
+        functionIdx,
+        (unsigned char*) PyBytes_AsString(value),
+        PyBytes_Size(value)
+    );
+
+
+    Py_RETURN_NONE;
+}
+
+static PyObject *faasm_await_call(PyObject *self, PyObject *args) {
+    int messageId = 0;
+
+    if(!PyArg_ParseTuple(args, "i", &messageId)) {
+        return NULL;
+    }
+
+    int result = __faasm_await_call((unsigned int) messageId);
+
+    return Py_BuildValue("i", result);
+}
+
+static PyObject *faasm_get_idx(PyObject *self) {
+    unsigned int idx = __faasm_get_idx();
+    return Py_BuildValue("i", idx);
+}
 
 // ----------------------------------
 // Module definition
@@ -212,6 +260,9 @@ static PyMethodDef cfaasm_methods[] = {
         {"faasm_set_state_offset", (PyCFunction) faasm_set_state_offset, METH_VARARGS, NULL},
         {"faasm_push_state", (PyCFunction) faasm_push_state, METH_VARARGS, NULL},
         {"faasm_pull_state", (PyCFunction) faasm_pull_state, METH_VARARGS, NULL},
+        {"faasm_chain_this", (PyCFunction) faasm_chain_this, METH_VARARGS, NULL},
+        {"faasm_await_call", (PyCFunction) faasm_await_call, METH_VARARGS, NULL},
+        {"faasm_get_idx", (PyCFunction) faasm_get_idx, METH_NOARGS, NULL},
         {NULL, NULL, 0, NULL}
 };
 

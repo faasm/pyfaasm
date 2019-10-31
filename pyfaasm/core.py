@@ -1,4 +1,19 @@
+import os
 import pyfaasm.cfaasm as cf
+
+IS_NATIVE_PYTHON = bool(os.environ.get("IS_NATIVE_PYTHON"))
+
+REGISTERED_FUNCTIONS = {}
+
+
+def registerFunction(idx, func):
+    global REGISTERED_FUNCTIONS
+    REGISTERED_FUNCTIONS[idx] = func
+
+
+def clearRegisteredFunctions():
+    global REGISTERED_FUNCTIONS
+    REGISTERED_FUNCTIONS = {}
 
 
 def checkPythonBindings():
@@ -48,12 +63,23 @@ def pullState(key, state_len):
 
 
 def getFunctionIdx():
-    pass
+    return cf.get_function_idx()
 
 
 def chainThisWithInput(function_idx, input_data):
-    pass
+    if IS_NATIVE_PYTHON:
+        # Run function directly
+        REGISTERED_FUNCTIONS[function_idx](input_data)
+        return 0
+    else:
+        # Call native
+        return cf.faasm_chain_this(function_idx, input_data)
 
 
 def awaitCall(call_id):
-    pass
+    if IS_NATIVE_PYTHON:
+        # Calls are run immediately
+        return 0
+    else:
+        # Call native
+        return cf.faasm_await_call(call_id)
