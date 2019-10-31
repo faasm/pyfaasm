@@ -1,5 +1,6 @@
 import unittest
-from pyfaasm.core import checkPythonBindings, setState, pushState, pullState, getState, setStateOffset, getStateOffset
+
+from pyfaasm.core import setState, pushState, pullState, getState, setStateOffset, getStateOffset
 
 
 class TestState(unittest.TestCase):

@@ -1,21 +1,22 @@
 import numpy as np
 
 from pyfaasm.core import setState, getStateOffset, getState, getFunctionIdx, chainThisWithInput, awaitCall, getInput, \
-    setStateOffset
+    setStateOffset, registerFunction
 
-# Work out the item size in a matrix by creating a dummy matrix
-NP_ELEMENT_SIZE = np.array([1.1, 1.1], [1.1, 1.1]).itemsize
+# NOTE: we are assuming numpy floats are 8 bytes here
+NP_ELEMENT_SIZE = 8
 
 # Remember we're dealing with square matrices and splitting the matrix into
 # four pieces each time we do the divide in the divide and conquer.
 # The number of splits is how many times we're dividing the origin matrices.
-MATRIX_SIZE = 8
-N_SPLITS = 2
+MATRIX_SIZE = 1000
+TOTAL_BYTES_PER_MATRIX = (MATRIX_SIZE * MATRIX_SIZE) * NP_ELEMENT_SIZE
+
+N_SPLITS = 3
 SUBMATRICES_PER_ROW = 2 ** N_SPLITS
+QUADRANTS_PER_ROW = 2 ** (N_SPLITS - 1)
 SUBMATRIX_SIZE = MATRIX_SIZE // SUBMATRICES_PER_ROW
-BYTES_PER_SUBMATRIX = SUBMATRIX_SIZE * SUBMATRIX_SIZE * NP_ELEMENT_SIZE
-BYTES_PER_ROW = BYTES_PER_SUBMATRIX * SUBMATRICES_PER_ROW
-TOTAL_BYTES_PER_MATRIX = BYTES_PER_SUBMATRIX * SUBMATRICES_PER_ROW * SUBMATRICES_PER_ROW
+BYTES_PER_SUBMATRIX = (SUBMATRIX_SIZE * SUBMATRIX_SIZE) * NP_ELEMENT_SIZE
 
 SUBMATRICES_KEY_A = "submatrices_a"
 SUBMATRICES_KEY_B = "submatrices_b"
@@ -24,7 +25,7 @@ RESULT_MATRIX_KEY = "result_matrix"
 
 # Returns the offset of a given submatrix in the overall byte array
 def _get_submatrix_byte_offset(row_idx, col_idx):
-    return (row_idx * BYTES_PER_ROW) + (col_idx * BYTES_PER_SUBMATRIX)
+    return (row_idx * BYTES_PER_SUBMATRIX * SUBMATRICES_PER_ROW) + (col_idx * BYTES_PER_SUBMATRIX)
 
 
 # Split up the original matrix into square submatrices and write to state
@@ -55,7 +56,7 @@ def subdivide_matrix_into_state(mat, key):
 def read_submatrix_from_state(key, row_idx, col_idx):
     offset = _get_submatrix_byte_offset(row_idx, col_idx)
     sub_mat_bytes = getStateOffset(key, TOTAL_BYTES_PER_MATRIX, offset, BYTES_PER_SUBMATRIX)
-    return np.frombuffer(sub_mat_bytes)
+    return np.frombuffer(sub_mat_bytes).reshape(SUBMATRIX_SIZE, SUBMATRIX_SIZE)
 
 
 # Rebuilds a matrix from its submatrices in state
@@ -70,6 +71,7 @@ def reconstruct_matrix_from_submatrices(key):
         for col_idx in range(0, SUBMATRICES_PER_ROW):
             byte_idx = _get_submatrix_byte_offset(row_idx, col_idx)
             this_submat = np.frombuffer(all_bytes[byte_idx: byte_idx + BYTES_PER_SUBMATRIX])
+            this_submat = this_submat.reshape(SUBMATRIX_SIZE, SUBMATRIX_SIZE)
             submatrices.append(this_submat)
 
         this_row = np.concatenate(submatrices, axis=1)
@@ -84,7 +86,10 @@ def reconstruct_matrix_from_submatrices(key):
     return result
 
 
-def do_multiplication(row_idx, col_idx):
+def do_multiplication(quad_row_idx, quad_col_idx):
+    row_idx = quad_row_idx * 2
+    col_idx = quad_col_idx * 2
+
     # Read in the four quadrants of each input matrix
     mat_aa = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx, col_idx)
     mat_ab = read_submatrix_from_state(SUBMATRICES_KEY_A, row_idx, col_idx + 1)
@@ -113,64 +118,43 @@ def do_multiplication(row_idx, col_idx):
     setStateOffset(RESULT_MATRIX_KEY, TOTAL_BYTES_PER_MATRIX, result_offset, result.tobytes())
 
 
-def main():
-    # Note, numpy assumes floats by default
-    a = np.array((
-        [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
-        [9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0],
-        [17.0, 18.0, 19.0, 20.0, 21.0, 22.0, 23.0, 24.0],
-        [25.0, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0, 32.0],
-        [33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0, 40.0],
-        [41.0, 42.0, 43.0, 44.0, 45.0, 46.0, 47.0, 48.0],
-        [49.0, 50.0, 51.0, 52.0, 53.0, 54.0, 55.0, 56.0],
-        [57.0, 58.0, 59.0, 60.0, 61.0, 62.0, 63.0, 64.0],
-    ))
+def distributed_divide_and_conquer(input_bytes):
+    # This is designed to be invoked by Faasm
+    input_args = np.frombuffer(input_bytes, dtype=int)
 
-    b = np.array((
-        [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5],
-        [9.5, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5],
-        [17.5, 18.5, 19.5, 20.5, 21.5, 22.5, 23.5, 24.5],
-        [25.5, 26.5, 27.5, 28.5, 29.5, 30.5, 31.5, 32.5],
-        [33.5, 34.5, 35.5, 36.5, 37.5, 38.5, 39.5, 40.5],
-        [41.5, 42.5, 43.5, 44.5, 45.5, 46.5, 47.5, 48.5],
-        [49.5, 50.5, 51.5, 52.5, 53.5, 54.5, 55.5, 56.5],
-        [57.5, 58.5, 59.5, 60.5, 61.5, 62.5, 63.5, 64.5],
-    ))
+    quadrant_row_idx = input_args[0]
+    quadrant_col_idx = input_args[1]
 
-    expected = np.dot(a, b)
+    print("Doing multiplication QUAD ROW {} QUAD COL {}".format(quadrant_row_idx, quadrant_col_idx))
+    do_multiplication(quadrant_row_idx, quadrant_col_idx)
 
-    # Set up the state
-    subdivide_matrix_into_state(a, SUBMATRICES_KEY_A)
-    subdivide_matrix_into_state(b, SUBMATRICES_KEY_B)
+
+def divide_and_conquer():
+    print("---- Matrix divide and conquer ----")
+    print("NP_ELEMENT_SIZE {}".format(NP_ELEMENT_SIZE))
+    print("MATRIX_SIZE {}".format(MATRIX_SIZE))
+    print("N_SPLITS {}".format(N_SPLITS))
+    print("SUBMATRICES_PER_ROW {}".format(SUBMATRICES_PER_ROW))
+    print("SUBMATRIX_SIZE {}".format(SUBMATRIX_SIZE))
+    print("BYTES_PER_SUBMATRIX {}".format(BYTES_PER_SUBMATRIX))
+    print("TOTAL_BYTES_PER_MATRIX {}".format(TOTAL_BYTES_PER_MATRIX))
+
+    # To keep things working in native python
+    registerFunction(1, distributed_divide_and_conquer)
+
+    # Zero the result
+    zero_result = np.zeros((MATRIX_SIZE, MATRIX_SIZE))
+    setState(RESULT_MATRIX_KEY, zero_result.tobytes())
 
     # Kick off all the multiplication jobs
+    # Note that the arguments to
     call_ids = []
-    for row_idx in range(0, SUBMATRICES_PER_ROW):
-        for col_idx in range(0, SUBMATRICES_PER_ROW):
-            call_id = chainThisWithInput(1, [row_idx, col_idx])
+    for quadrant_row_idx in range(0, QUADRANTS_PER_ROW):
+        for quadrant_col_idx in range(0, QUADRANTS_PER_ROW):
+            inputs = np.array([quadrant_row_idx, quadrant_col_idx])
+            call_id = chainThisWithInput(1, inputs.tobytes())
             call_ids.append(call_id)
 
+    # Await completion
     for call_id in call_ids:
         awaitCall(call_id)
-
-    # Load the result
-    result = reconstruct_matrix_from_submatrices(RESULT_MATRIX_KEY)
-
-    print("\nEXPECTED\n {}".format(expected))
-    print("\nRESULT\n{}".format(result))
-
-
-if __name__ == "__main__":
-    idx = getFunctionIdx()
-
-    if idx == 0:
-        main()
-    else:
-        input_bytes = getInput()
-        input_args = np.frombuffer(input_bytes, dtype=int)
-
-        row = input_args[0]
-        col = input_args[1]
-
-        print("Doing multiplication ROW {} COL {}".format(row, col))
-        do_multiplication(row, col)
