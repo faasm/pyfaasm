@@ -1,31 +1,74 @@
 import numpy as np
 
-from pyfaasm.core import setState, getStateOffset, getState, getFunctionIdx, chainThisWithInput, awaitCall, getInput, \
-    setStateOffset, registerFunction
+from pyfaasm.core import setState, getStateOffset, getState, chainThisWithInput, awaitCall, setStateOffset, \
+    registerFunction
 
 # NOTE: we are assuming numpy floats are 8 bytes here
 NP_ELEMENT_SIZE = 8
 
-# Remember we're dealing with square matrices and splitting the matrix into
-# four pieces each time we do the divide in the divide and conquer.
-# The number of splits is how many times we're dividing the origin matrices.
-MATRIX_SIZE = 1000
-TOTAL_BYTES_PER_MATRIX = (MATRIX_SIZE * MATRIX_SIZE) * NP_ELEMENT_SIZE
-
-N_SPLITS = 3
-SUBMATRICES_PER_ROW = 2 ** N_SPLITS
-QUADRANTS_PER_ROW = 2 ** (N_SPLITS - 1)
-SUBMATRIX_SIZE = MATRIX_SIZE // SUBMATRICES_PER_ROW
-BYTES_PER_SUBMATRIX = (SUBMATRIX_SIZE * SUBMATRIX_SIZE) * NP_ELEMENT_SIZE
-
 SUBMATRICES_KEY_A = "submatrices_a"
 SUBMATRICES_KEY_B = "submatrices_b"
 RESULT_MATRIX_KEY = "result_matrix"
+MATRIX_CONF_STATE_KEY = "matrix_state"
+
+
+class MatrixConf:
+    initialised = False
+    matrix_size = 0
+    n_splits = 0
+    bytes_per_matrix = 0
+    submatrices_per_row = 0
+    quadrants_per_row = 0
+    submatrix_size = 0
+    bytes_per_submatrix = 0
+
+
+def write_matrix_params_to_state(matrix_size, n_splits):
+    params = np.array((matrix_size, n_splits))
+    setState(MATRIX_CONF_STATE_KEY, params.tobytes())
+
+
+def load_matrix_conf_from_state():
+    if MatrixConf.initialised:
+        return
+
+    MatrixConf.initialised = True
+
+    # Params are ints so need to work out what size they are
+    dummy = np.array((1, 2))
+    param_len = len(dummy.tobytes())
+    param_bytes = getState(MATRIX_CONF_STATE_KEY, param_len)
+    params = np.frombuffer(param_bytes, dtype=int)
+
+    matrix_size = params[0]
+    n_splits = params[1]
+
+    # Remember we're dealing with square matrices and splitting the matrix into
+    # four pieces each time we do the divide in the divide and conquer.
+    # The number of splits is how many times we're dividing the origin matrices.
+
+    MatrixConf.matrix_size = matrix_size
+    MatrixConf.n_splits = n_splits
+    MatrixConf.bytes_per_matrix = (matrix_size * matrix_size) * NP_ELEMENT_SIZE
+    MatrixConf.submatrices_per_row = 2 ** n_splits
+    MatrixConf.quadrants_per_row = 2 ** (n_splits - 1)
+    MatrixConf.submatrix_size = matrix_size // MatrixConf.submatrices_per_row
+    MatrixConf.bytes_per_submatrix = (MatrixConf.submatrix_size * MatrixConf.submatrix_size) * NP_ELEMENT_SIZE
+
+    print("---- Matrix divide and conquer ----")
+    print("np_element_size {}".format(NP_ELEMENT_SIZE))
+    print("matrix_size {}".format(MatrixConf.matrix_size))
+    print("n_splits {}".format(MatrixConf.n_splits))
+    print("submatrices_per_row {}".format(MatrixConf.submatrices_per_row))
+    print("submatrix_size {}".format(MatrixConf.submatrix_size))
+    print("bytes_per_submatrix {}".format(MatrixConf.bytes_per_submatrix))
+    print("bytes_per_matrix {}".format(MatrixConf.bytes_per_matrix))
 
 
 # Returns the offset of a given submatrix in the overall byte array
 def _get_submatrix_byte_offset(row_idx, col_idx):
-    return (row_idx * BYTES_PER_SUBMATRIX * SUBMATRICES_PER_ROW) + (col_idx * BYTES_PER_SUBMATRIX)
+    return (row_idx * MatrixConf.bytes_per_submatrix * MatrixConf.submatrices_per_row) + \
+           (col_idx * MatrixConf.bytes_per_submatrix)
 
 
 # Split up the original matrix into square submatrices and write to state
@@ -35,14 +78,14 @@ def subdivide_matrix_into_state(mat, key):
     # Step through rows and columns of original matrix, appending submatrix bytes
     # to the overall byte stream
     all_bytes = b''
-    for row_idx in range(0, SUBMATRICES_PER_ROW):
-        for col_idx in range(0, SUBMATRICES_PER_ROW):
+    for row_idx in range(0, MatrixConf.submatrices_per_row):
+        for col_idx in range(0, MatrixConf.submatrices_per_row):
             # Work out the position of the top left and bottom right corner of the submatrix
-            row_start = row_idx * SUBMATRIX_SIZE
-            col_start = col_idx * SUBMATRIX_SIZE
+            row_start = row_idx * MatrixConf.submatrix_size
+            col_start = col_idx * MatrixConf.submatrix_size
 
-            row_end = row_start + SUBMATRIX_SIZE
-            col_end = col_start + SUBMATRIX_SIZE
+            row_end = row_start + MatrixConf.submatrix_size
+            col_end = col_start + MatrixConf.submatrix_size
 
             # Extract the submatrix and write to bytes
             sub_mat = mat[row_start:row_end, col_start:col_end]
@@ -55,23 +98,23 @@ def subdivide_matrix_into_state(mat, key):
 # Reads a given submatrix from state
 def read_submatrix_from_state(key, row_idx, col_idx):
     offset = _get_submatrix_byte_offset(row_idx, col_idx)
-    sub_mat_bytes = getStateOffset(key, TOTAL_BYTES_PER_MATRIX, offset, BYTES_PER_SUBMATRIX)
-    return np.frombuffer(sub_mat_bytes).reshape(SUBMATRIX_SIZE, SUBMATRIX_SIZE)
+    sub_mat_bytes = getStateOffset(key, MatrixConf.bytes_per_matrix, offset, MatrixConf.bytes_per_submatrix)
+    return np.frombuffer(sub_mat_bytes).reshape(MatrixConf.submatrix_size, MatrixConf.submatrix_size)
 
 
 # Rebuilds a matrix from its submatrices in state
 def reconstruct_matrix_from_submatrices(key):
-    all_bytes = getState(key, TOTAL_BYTES_PER_MATRIX)
+    all_bytes = getState(key, MatrixConf.bytes_per_matrix)
 
     result = None
 
     # Need to read in row by row concatenate the rows
-    for row_idx in range(0, SUBMATRICES_PER_ROW):
+    for row_idx in range(0, MatrixConf.submatrices_per_row):
         submatrices = []
-        for col_idx in range(0, SUBMATRICES_PER_ROW):
+        for col_idx in range(0, MatrixConf.submatrices_per_row):
             byte_idx = _get_submatrix_byte_offset(row_idx, col_idx)
-            this_submat = np.frombuffer(all_bytes[byte_idx: byte_idx + BYTES_PER_SUBMATRIX])
-            this_submat = this_submat.reshape(SUBMATRIX_SIZE, SUBMATRIX_SIZE)
+            this_submat = np.frombuffer(all_bytes[byte_idx: byte_idx + MatrixConf.bytes_per_submatrix])
+            this_submat = this_submat.reshape(MatrixConf.submatrix_size, MatrixConf.submatrix_size)
             submatrices.append(this_submat)
 
         this_row = np.concatenate(submatrices, axis=1)
@@ -115,10 +158,12 @@ def do_multiplication(quad_row_idx, quad_col_idx):
 
     # Write to state
     result_offset = _get_submatrix_byte_offset(row_idx, col_idx)
-    setStateOffset(RESULT_MATRIX_KEY, TOTAL_BYTES_PER_MATRIX, result_offset, result.tobytes())
+    setStateOffset(RESULT_MATRIX_KEY, MatrixConf.bytes_per_matrix, result_offset, result.tobytes())
 
 
 def distributed_divide_and_conquer(input_bytes):
+    load_matrix_conf_from_state()
+
     # This is designed to be invoked by Faasm
     input_args = np.frombuffer(input_bytes, dtype=int)
 
@@ -130,27 +175,20 @@ def distributed_divide_and_conquer(input_bytes):
 
 
 def divide_and_conquer():
-    print("---- Matrix divide and conquer ----")
-    print("NP_ELEMENT_SIZE {}".format(NP_ELEMENT_SIZE))
-    print("MATRIX_SIZE {}".format(MATRIX_SIZE))
-    print("N_SPLITS {}".format(N_SPLITS))
-    print("SUBMATRICES_PER_ROW {}".format(SUBMATRICES_PER_ROW))
-    print("SUBMATRIX_SIZE {}".format(SUBMATRIX_SIZE))
-    print("BYTES_PER_SUBMATRIX {}".format(BYTES_PER_SUBMATRIX))
-    print("TOTAL_BYTES_PER_MATRIX {}".format(TOTAL_BYTES_PER_MATRIX))
+    load_matrix_conf_from_state()
 
     # To keep things working in native python
     registerFunction(1, distributed_divide_and_conquer)
 
     # Zero the result
-    zero_result = np.zeros((MATRIX_SIZE, MATRIX_SIZE))
+    zero_result = np.zeros((MatrixConf.matrix_size, MatrixConf.matrix_size))
     setState(RESULT_MATRIX_KEY, zero_result.tobytes())
 
     # Kick off all the multiplication jobs
     # Note that the arguments to
     call_ids = []
-    for quadrant_row_idx in range(0, QUADRANTS_PER_ROW):
-        for quadrant_col_idx in range(0, QUADRANTS_PER_ROW):
+    for quadrant_row_idx in range(0, MatrixConf.quadrants_per_row):
+        for quadrant_col_idx in range(0, MatrixConf.quadrants_per_row):
             inputs = np.array([quadrant_row_idx, quadrant_col_idx])
             call_id = chainThisWithInput(1, inputs.tobytes())
             call_ids.append(call_id)
