@@ -71,6 +71,18 @@ def _get_submatrix_byte_offset(row_idx, col_idx):
            (col_idx * MatrixConf.bytes_per_submatrix)
 
 
+# Create a random matrix split up in state
+def subdivide_random_matrix_into_state(key):
+    # Step through rows and columns of original matrix, generating random submatrices
+    all_bytes = b''
+    for row_idx in range(0, MatrixConf.submatrices_per_row):
+        for col_idx in range(0, MatrixConf.submatrices_per_row):
+            sub_mat = np.random.rand(MatrixConf.submatrix_size, MatrixConf.submatrix_size)
+            all_bytes += sub_mat.tobytes()
+
+    setState(key, all_bytes)
+
+
 # Split up the original matrix into square submatrices and write to state
 # Write each submatrix as a region of contiguous bytes
 # All submatrices appended into one byte stream

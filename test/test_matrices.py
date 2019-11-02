@@ -5,7 +5,7 @@ import redis
 
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
     read_submatrix_from_state, divide_and_conquer, RESULT_MATRIX_KEY, write_matrix_params_to_state, \
-    load_matrix_conf_from_state, MatrixConf
+    load_matrix_conf_from_state, MatrixConf, subdivide_random_matrix_into_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B
 
 
 class TestMatrices(unittest.TestCase):
@@ -21,10 +21,19 @@ class TestMatrices(unittest.TestCase):
         self.assertEqual(MatrixConf.matrix_size, 1000)
         self.assertEqual(MatrixConf.n_splits, 3)
 
+    def test_random_large_matrix_to_state(self):
+        subdivide_random_matrix_into_state(self.key)
+        actual = reconstruct_matrix_from_submatrices(self.key)
+
+        # Check shape
+        self.assertEqual(actual.shape, (MatrixConf.matrix_size, MatrixConf.matrix_size))
+
     def test_matrix_round_trip(self):
         mat_a = np.random.rand(MatrixConf.matrix_size, MatrixConf.matrix_size)
         subdivide_matrix_into_state(mat_a, self.key)
-        reconstruct_matrix_from_submatrices(self.key)
+        actual = reconstruct_matrix_from_submatrices(self.key)
+
+        self.assertTrue(np.array_equal(mat_a, actual))
 
     def test_reading_submatrix_from_state(self):
         mat_a = np.random.rand(MatrixConf.matrix_size, MatrixConf.matrix_size)
@@ -48,7 +57,25 @@ class TestMatrices(unittest.TestCase):
         # Set up the problem
         mat_a = np.random.rand(MatrixConf.matrix_size, MatrixConf.matrix_size)
         mat_b = np.random.rand(MatrixConf.matrix_size, MatrixConf.matrix_size)
+        subdivide_matrix_into_state(mat_a, SUBMATRICES_KEY_A)
+        subdivide_matrix_into_state(mat_b, SUBMATRICES_KEY_B)
 
+        expected = np.dot(mat_a, mat_b)
+
+        # Invoke the divide and conquer
+        divide_and_conquer()
+
+        # Load the result
+        actual = reconstruct_matrix_from_submatrices(RESULT_MATRIX_KEY)
+
+        self.assertTrue(np.array_equal(expected, actual))
+
+    def test_distributed_multiplication_with_random(self):
+        subdivide_random_matrix_into_state(SUBMATRICES_KEY_A)
+        subdivide_random_matrix_into_state(SUBMATRICES_KEY_B)
+
+        mat_a = reconstruct_matrix_from_submatrices(SUBMATRICES_KEY_A)
+        mat_b = reconstruct_matrix_from_submatrices(SUBMATRICES_KEY_B)
         expected = np.dot(mat_a, mat_b)
 
         # Invoke the divide and conquer
