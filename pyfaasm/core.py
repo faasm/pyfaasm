@@ -1,9 +1,25 @@
 import os
+
 import pyfaasm.cfaasm as cf
 
-IS_NATIVE_PYTHON = bool(os.environ.get("IS_NATIVE_PYTHON"))
+PYTHON_LOCAL_CHAINING = bool(os.environ.get("PYTHON_LOCAL_CHAINING"))
+PYTHON_LOCAL_INPUT_OUTPUT = bool(os.environ.get("PYTHON_LOCAL_INPUT_OUTPUT"))
 
 REGISTERED_FUNCTIONS = {}
+
+input_data = None
+output_data = None
+func_idx = 0
+
+
+def setLocalChaining(value):
+    global PYTHON_LOCAL_CHAINING
+    PYTHON_LOCAL_CHAINING = value
+
+
+def setLocalInputOutput(value):
+    global PYTHON_LOCAL_INPUT_OUTPUT
+    PYTHON_LOCAL_INPUT_OUTPUT = value
 
 
 def registerFunction(idx, func):
@@ -33,12 +49,36 @@ def checkPythonBindings():
     print("Function idx = {}".format(getFunctionIdx()))
 
 
+def setInput(d):
+    if PYTHON_LOCAL_INPUT_OUTPUT:
+        global input_data
+        input_data = d
+    else:
+        raise RuntimeError("Should not be setting input in non-local input/output")
+
+
 def getInput():
-    return cf.faasm_get_input()
+    if PYTHON_LOCAL_INPUT_OUTPUT:
+        global input_data
+        return input_data
+    else:
+        return cf.faasm_get_input()
 
 
 def setOutput(output):
-    cf.faasm_set_output(output)
+    if PYTHON_LOCAL_INPUT_OUTPUT:
+        global output_data
+        output_data = output
+    else:
+        cf.faasm_set_output(output)
+
+
+def getOutput():
+    if PYTHON_LOCAL_INPUT_OUTPUT:
+        global output_data
+        return output_data
+    else:
+        raise RuntimeError("Should not be getting output in non-local input/ output")
 
 
 def getState(key, len):
@@ -69,12 +109,24 @@ def pullState(key, state_len):
     cf.faasm_pull_state(key, state_len)
 
 
+def setFunctionIdx(idx):
+    if PYTHON_LOCAL_INPUT_OUTPUT:
+        global func_idx
+        func_idx = idx
+    else:
+        raise RuntimeError("Should not be setting index in non-local input/output")
+
+
 def getFunctionIdx():
-    return cf.faasm_get_idx()
+    if PYTHON_LOCAL_INPUT_OUTPUT:
+        global func_idx
+        return func_idx
+    else:
+        return cf.faasm_get_idx()
 
 
 def chainThisWithInput(function_idx, input_data):
-    if IS_NATIVE_PYTHON:
+    if PYTHON_LOCAL_CHAINING:
         # Run function directly
         REGISTERED_FUNCTIONS[function_idx](input_data)
         return 0
@@ -84,7 +136,7 @@ def chainThisWithInput(function_idx, input_data):
 
 
 def awaitCall(call_id):
-    if IS_NATIVE_PYTHON:
+    if PYTHON_LOCAL_CHAINING:
         # Calls are run immediately
         return 0
     else:

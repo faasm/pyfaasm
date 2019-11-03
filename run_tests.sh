@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Make sure python can find Faasm libraries
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/faasm/install/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
-export IS_NATIVE_PYTHON=1
+export PYTHON_LOCAL_CHAINING=1
 
 # Switch on Faasm debug logging
 export LOG_LEVEL=debug

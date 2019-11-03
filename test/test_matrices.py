@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 import redis
 
+from pyfaasm.core import setState
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
     read_submatrix_from_state, divide_and_conquer, RESULT_MATRIX_KEY, write_matrix_params_to_state, \
     load_matrix_conf_from_state, MatrixConf, subdivide_random_matrix_into_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
@@ -68,6 +69,10 @@ class TestMatrices(unittest.TestCase):
         mat_b = np.random.rand(MatrixConf.matrix_size, MatrixConf.matrix_size)
         subdivide_matrix_into_state(mat_a, SUBMATRICES_KEY_A)
         subdivide_matrix_into_state(mat_b, SUBMATRICES_KEY_B)
+
+        # Write result into state
+        zero_result = np.zeros((MatrixConf.matrix_size, MatrixConf.matrix_size))
+        setState(RESULT_MATRIX_KEY, zero_result.tobytes())
 
         expected = np.dot(mat_a, mat_b)
 
