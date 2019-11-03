@@ -3,7 +3,7 @@ import os
 import pyfaasm.cfaasm as cf
 
 PYTHON_LOCAL_CHAINING = bool(os.environ.get("PYTHON_LOCAL_CHAINING"))
-PYTHON_LOCAL_INPUT_OUTPUT = bool(os.environ.get("PYTHON_LOCAL_INPUT_OUTPUT"))
+PYTHON_LOCAL_OUTPUT = bool(os.environ.get("PYTHON_LOCAL_OUTPUT"))
 
 REGISTERED_FUNCTIONS = {}
 
@@ -18,8 +18,8 @@ def setLocalChaining(value):
 
 
 def setLocalInputOutput(value):
-    global PYTHON_LOCAL_INPUT_OUTPUT
-    PYTHON_LOCAL_INPUT_OUTPUT = value
+    global PYTHON_LOCAL_OUTPUT
+    PYTHON_LOCAL_OUTPUT = value
 
 
 def registerFunction(idx, func):
@@ -48,25 +48,12 @@ def checkPythonBindings():
     # Check function index
     print("Function idx = {}".format(getFunctionIdx()))
 
-
-def setInput(d):
-    if PYTHON_LOCAL_INPUT_OUTPUT:
-        global input_data
-        input_data = d
-    else:
-        raise RuntimeError("Should not be setting input in non-local input/output")
-
-
 def getInput():
-    if PYTHON_LOCAL_INPUT_OUTPUT:
-        global input_data
-        return input_data
-    else:
-        return cf.faasm_get_input()
+    return cf.faasm_get_input()
 
 
 def setOutput(output):
-    if PYTHON_LOCAL_INPUT_OUTPUT:
+    if PYTHON_LOCAL_OUTPUT:
         global output_data
         output_data = output
     else:
@@ -74,7 +61,7 @@ def setOutput(output):
 
 
 def getOutput():
-    if PYTHON_LOCAL_INPUT_OUTPUT:
+    if PYTHON_LOCAL_OUTPUT:
         global output_data
         return output_data
     else:
@@ -109,20 +96,8 @@ def pullState(key, state_len):
     cf.faasm_pull_state(key, state_len)
 
 
-def setFunctionIdx(idx):
-    if PYTHON_LOCAL_INPUT_OUTPUT:
-        global func_idx
-        func_idx = idx
-    else:
-        raise RuntimeError("Should not be setting index in non-local input/output")
-
-
 def getFunctionIdx():
-    if PYTHON_LOCAL_INPUT_OUTPUT:
-        global func_idx
-        return func_idx
-    else:
-        return cf.faasm_get_idx()
+    return cf.faasm_get_idx()
 
 
 def chainThisWithInput(function_idx, input_data):
@@ -150,3 +125,7 @@ def getCallStatus(call_id):
         return "SUCCESS"
     else:
         return cf.get_call_status(call_id)
+
+
+def setEmulatorMessage(messageJson):
+    cf.set_emulator_message(messageJson)

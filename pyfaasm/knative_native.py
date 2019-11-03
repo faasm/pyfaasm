@@ -1,8 +1,9 @@
 import os
+from json import dumps
 
 from flask import Flask, request
 
-from pyfaasm.core import setFunctionIdx, setInput, getOutput, setLocalInputOutput, getCallStatus
+from pyfaasm.core import getOutput, setLocalInputOutput, getCallStatus, setEmulatorMessage
 
 app = Flask(__name__)
 
@@ -27,25 +28,26 @@ def _handle_status(json_data):
 
 
 def _handle_call(json_data):
+    # Set up the emulator
+    setEmulatorMessage(dumps(json_data))
+
     user = json_data["py_user"]
     func = json_data["py_func"]
     idx = json_data.get("py_idx", 0)
-    input_data = json_data.get("input_data", None)
 
-    print("Executing {}/{} (idx {}) with input {}".format(user, func, idx, input_data))
+    print("Executing {}/{} (idx {})".format(user, func, idx))
 
     # Assume function is in the current path
     module_name = "pyfaasm.{}.{}".format(user, func)
     mod = __import__(module_name, fromlist=[""])
 
-    # Set up input
-    if input_data:
-        # Convert string to bytes
-        setInput(input_data.encode("utf-8"))
-
-    # Set up the function index and run
-    setFunctionIdx(idx)
-    mod.main_func()
+    # TODO - if asynchronous, run the function in the background
+    if json_data.get("async", False):
+        # Use emulator to dispatch in the background
+        pass
+    else:
+        # Run the function
+        mod.main_func()
 
     # Return the output
     func_output = getOutput()

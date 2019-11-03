@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import int32
 
 from pyfaasm.core import setState, getStateOffset, getState, chainThisWithInput, awaitCall, setStateOffset, \
     registerFunction, pushStatePartial
@@ -35,10 +36,10 @@ def load_matrix_conf_from_state():
     MatrixConf.initialised = True
 
     # Params are ints so need to work out what size they are
-    dummy = np.array((1, 2))
+    dummy = np.array((1, 2), dtype=int32)
     param_len = len(dummy.tobytes())
     param_bytes = getState(MATRIX_CONF_STATE_KEY, param_len)
-    params = np.frombuffer(param_bytes, dtype=int)
+    params = np.frombuffer(param_bytes, dtype=int32)
 
     matrix_size = params[0]
     n_splits = params[1]
@@ -202,7 +203,7 @@ def distributed_divide_and_conquer(input_bytes):
     load_matrix_conf_from_state()
 
     # This is designed to be invoked by Faasm
-    input_args = np.frombuffer(input_bytes, dtype=int)
+    input_args = np.frombuffer(input_bytes, dtype=int32)
 
     quadrant_row_idx = input_args[0]
     quadrant_col_idx = input_args[1]
