@@ -16,7 +16,7 @@ else:
 def main():
     PKG_NAME = "pyfaasm"
     FAASM_LIBS = ["faasm", "emulator"]
-    FAASM_INSTALL = "/usr/local/faasm/install/"
+    FAASM_INSTALL = "/usr/local"
 
     extension_kwargs = {
         "sources": ["pyfaasm/cfaasm.c"],
@@ -33,7 +33,7 @@ def main():
     setup(
         name=PKG_NAME,
         packages=[PKG_NAME],
-        version="0.0.21",
+        version="0.0.22",
         description="Python interface for Faasm",
         long_description="""## Faasm Python bindings\nSee main repo at https://github.com/lsds/Faasm.""",
         long_description_content_type="text/markdown",

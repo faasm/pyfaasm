@@ -55,6 +55,9 @@ int __faasm_await_call(unsigned int messageId);
 FAASM_IMPORT
 int __faasm_get_py_idx();
 
+FAASM_IMPORT
+char * emulatorGetCallStatus(unsigned int messageId);
+
 
 // ----------------------------------
 // Byte handling
@@ -259,6 +262,18 @@ static PyObject *faasm_get_idx(PyObject *self) {
     return Py_BuildValue("i", idx);
 }
 
+static PyObject *get_call_status(PyObject *self, PyObject *args) {
+    int messageId = 0;
+
+    if(!PyArg_ParseTuple(args, "i", &messageId)) {
+        return NULL;
+    }
+
+    char* result = emulatorGetCallStatus((unsigned int) messageId);
+
+    return Py_BuildValue("s", result);
+}
+
 // ----------------------------------
 // Module definition
 // ----------------------------------
@@ -278,6 +293,7 @@ static PyMethodDef cfaasm_methods[] = {
         {"faasm_chain_this", (PyCFunction) faasm_chain_this, METH_VARARGS, NULL},
         {"faasm_await_call", (PyCFunction) faasm_await_call, METH_VARARGS, NULL},
         {"faasm_get_idx", (PyCFunction) faasm_get_idx, METH_NOARGS, NULL},
+        {"get_call_status", (PyCFunction) get_call_status, METH_NOARGS, NULL},
         {NULL, NULL, 0, NULL}
 };
 

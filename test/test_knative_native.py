@@ -1,4 +1,3 @@
-import os
 import unittest
 
 from pyfaasm.core import setLocalInputOutput
@@ -16,7 +15,7 @@ class TestKnativeNative(unittest.TestCase):
         json_data = {
             "py_user": "dummy_user",
             "py_func": "dummy_echo",
-            "input_data": b'This is input',
+            "input_data": "This is input",
         }
 
         handle_message(json_data)

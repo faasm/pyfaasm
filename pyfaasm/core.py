@@ -142,3 +142,11 @@ def awaitCall(call_id):
     else:
         # Call native
         return cf.faasm_await_call(call_id)
+
+
+def getCallStatus(call_id):
+    if PYTHON_LOCAL_CHAINING:
+        # Calls are run immediately
+        return "SUCCESS"
+    else:
+        return cf.get_call_status(call_id)
