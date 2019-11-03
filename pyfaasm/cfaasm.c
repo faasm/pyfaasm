@@ -55,9 +55,6 @@ int __faasm_await_call(unsigned int messageId);
 FAASM_IMPORT
 int __faasm_get_py_idx();
 
-FAASM_IMPORT
-char * emulatorGetCallStatus(unsigned int messageId);
-
 // ------ Faasm emulator API ------
 FAASM_IMPORT
 void setEmulatedMessageFromJson(const char *msgJson);
@@ -66,7 +63,7 @@ FAASM_IMPORT
 char* emulatorGetAsyncResponse();
 
 FAASM_IMPORT
-void emulatorSetCallStatus(bool success);
+void emulatorSetCallStatus(int success);
 
 
 // ----------------------------------
@@ -287,7 +284,7 @@ static PyObject *set_emulator_message(PyObject *self, PyObject *args) {
 }
 
 static PyObject *set_emulator_status(PyObject *self, PyObject *args) {
-    int success = NULL;
+    int success = 0;
     if(!PyArg_ParseTuple(args, "i", &success)) {
         return NULL;
     }
@@ -296,7 +293,7 @@ static PyObject *set_emulator_status(PyObject *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static get_emulator_async_response(PyObject *self) {
+static PyObject *get_emulator_async_response(PyObject *self) {
     char* responseStr = emulatorGetAsyncResponse();
     return Py_BuildValue("s", responseStr);
 }

@@ -1,23 +1,37 @@
 import os
+from decimal import Decimal
 from json import dumps
 import threading
+from time import sleep
 
 from flask import Flask, request
 
 from pyfaasm.core import getOutput, setLocalInputOutput, setEmulatorMessage, emulatorSetStatus, emulatorGetAsyncResponse
 
+
 app = Flask(__name__)
+
+is_cold_start = True
 
 
 @app.route('/', methods=["GET", "POST"])
 def run_func():
+    global is_cold_start
+    if is_cold_start:
+        delay_str = os.environ.get("COLD_START_DELAY_MS", "1000")
+        delay_seconds = Decimal(delay_str) / 1000
+        print("Simulating cold start for {} seconds".format(delay_seconds))
+
+        sleep(delay_seconds)
+        is_cold_start = False
+
     json_data = request.get_json()
     return handle_message(json_data)
 
 
 def execute_main(mod):
     mod.main_func()
-    emulatorSetStatus(True)
+    emulatorSetStatus(1)
 
 
 def handle_message(json_data):

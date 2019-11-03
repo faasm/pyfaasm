@@ -25,7 +25,7 @@ class MatrixConf:
 
 
 def write_matrix_params_to_state(matrix_size, n_splits):
-    params = np.array((matrix_size, n_splits))
+    params = np.array((matrix_size, n_splits), dtype=int32)
     setState(MATRIX_CONF_STATE_KEY, params.tobytes())
 
 

@@ -1,9 +1,10 @@
 import unittest
+from json import dumps
 
 import numpy as np
 import redis
 
-from pyfaasm.core import setState
+from pyfaasm.core import setState, setEmulatorMessage
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
     read_submatrix_from_state, divide_and_conquer, RESULT_MATRIX_KEY, write_matrix_params_to_state, \
     load_matrix_conf_from_state, MatrixConf, subdivide_random_matrix_into_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
@@ -16,6 +17,15 @@ class TestMatrices(unittest.TestCase):
         self.redis.flushall()
 
         self.key = "matrix_tester"
+
+        msg = {
+            "user": "python",
+            "function": "py_func",
+            "py_user": "python",
+            "py_func": "mat_mul",
+        }
+        msg_json = dumps(msg)
+        setEmulatorMessage(msg_json)
 
         # Write and read config
         write_matrix_params_to_state(1000, 3)
