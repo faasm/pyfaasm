@@ -58,8 +58,15 @@ int __faasm_get_py_idx();
 FAASM_IMPORT
 char * emulatorGetCallStatus(unsigned int messageId);
 
+// ------ Faasm emulator API ------
 FAASM_IMPORT
-void setEmulatorMessage(const char *messageJson);
+void setEmulatedMessageFromJson(const char *msgJson);
+
+FAASM_IMPORT
+char* emulatorGetAsyncResponse();
+
+FAASM_IMPORT
+void emulatorSetCallStatus(bool success);
 
 
 // ----------------------------------
@@ -269,29 +276,30 @@ static PyObject *faasm_get_idx(PyObject *self) {
 // Emulator
 // ----------------------------------
 
-static PyObject *get_call_status(PyObject *self, PyObject *args) {
-    int messageId = 0;
-
-    if(!PyArg_ParseTuple(args, "i", &messageId)) {
-        return NULL;
-    }
-
-    char* result = emulatorGetCallStatus((unsigned int) messageId);
-
-    return Py_BuildValue("s", result);
-}
-
-// Get whole state value
 static PyObject *set_emulator_message(PyObject *self, PyObject *args) {
     char* messageJson = NULL;
     if(!PyArg_ParseTuple(args, "s", &messageJson)) {
         return NULL;
     }
 
-    setEmulatorMessage(messageJson);
+    setEmulatedMessageFromJson(messageJson);
     Py_RETURN_NONE;
 }
 
+static PyObject *set_emulator_status(PyObject *self, PyObject *args) {
+    int success = NULL;
+    if(!PyArg_ParseTuple(args, "i", &success)) {
+        return NULL;
+    }
+
+    emulatorSetCallStatus(success);
+    Py_RETURN_NONE;
+}
+
+static get_emulator_async_response(PyObject *self) {
+    char* responseStr = emulatorGetAsyncResponse();
+    return Py_BuildValue("s", responseStr);
+}
 
 // ----------------------------------
 // Module definition
@@ -312,8 +320,9 @@ static PyMethodDef cfaasm_methods[] = {
         {"faasm_chain_this", (PyCFunction) faasm_chain_this, METH_VARARGS, NULL},
         {"faasm_await_call", (PyCFunction) faasm_await_call, METH_VARARGS, NULL},
         {"faasm_get_idx", (PyCFunction) faasm_get_idx, METH_NOARGS, NULL},
-        {"get_call_status", (PyCFunction) get_call_status, METH_VARARGS, NULL},
         {"set_emulator_message", (PyCFunction) set_emulator_message, METH_VARARGS, NULL},
+        {"set_emulator_status", (PyCFunction) set_emulator_status, METH_VARARGS, NULL},
+        {"get_emulator_async_response", (PyCFunction) get_emulator_async_response, METH_NOARGS, NULL},
         {NULL, NULL, 0, NULL}
 };
 

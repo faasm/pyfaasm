@@ -48,6 +48,7 @@ def checkPythonBindings():
     # Check function index
     print("Function idx = {}".format(getFunctionIdx()))
 
+
 def getInput():
     return cf.faasm_get_input()
 
@@ -119,13 +120,13 @@ def awaitCall(call_id):
         return cf.faasm_await_call(call_id)
 
 
-def getCallStatus(call_id):
-    if PYTHON_LOCAL_CHAINING:
-        # Calls are run immediately
-        return "SUCCESS"
-    else:
-        return cf.get_call_status(call_id)
-
-
 def setEmulatorMessage(messageJson):
     cf.set_emulator_message(messageJson)
+
+
+def emulatorSetStatus(success):
+    cf.set_emulator_status(success)
+
+
+def emulatorGetAsyncResponse():
+    return cf.get_emulator_async_response()
