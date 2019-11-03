@@ -40,6 +40,9 @@ FAASM_IMPORT
 void __faasm_push_state(const char *key);
 
 FAASM_IMPORT
+void __faasm_push_state_partial(const char *key);
+
+FAASM_IMPORT
 void __faasm_pull_state(const char *key, long stateLen);
 
 // ------ Faasm chaining ------
@@ -194,6 +197,18 @@ static PyObject *faasm_push_state(PyObject *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+// Push partial state value
+static PyObject *faasm_push_state_partial(PyObject *self, PyObject *args) {
+    char* key = NULL;
+    if(!PyArg_ParseTuple(args, "s", &key)) {
+        return NULL;
+    }
+
+    __faasm_push_state_partial(key);
+
+    Py_RETURN_NONE;
+}
+
 // Pull whole state value
 static PyObject *faasm_pull_state(PyObject *self, PyObject *args) {
     char* key = NULL;
@@ -258,6 +273,7 @@ static PyMethodDef cfaasm_methods[] = {
         {"faasm_set_state", (PyCFunction) faasm_set_state, METH_VARARGS, NULL},
         {"faasm_set_state_offset", (PyCFunction) faasm_set_state_offset, METH_VARARGS, NULL},
         {"faasm_push_state", (PyCFunction) faasm_push_state, METH_VARARGS, NULL},
+        {"faasm_push_state_partial", (PyCFunction) faasm_push_state_partial, METH_VARARGS, NULL},
         {"faasm_pull_state", (PyCFunction) faasm_pull_state, METH_VARARGS, NULL},
         {"faasm_chain_this", (PyCFunction) faasm_chain_this, METH_VARARGS, NULL},
         {"faasm_await_call", (PyCFunction) faasm_await_call, METH_VARARGS, NULL},

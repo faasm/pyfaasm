@@ -5,7 +5,8 @@ import redis
 
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
     read_submatrix_from_state, divide_and_conquer, RESULT_MATRIX_KEY, write_matrix_params_to_state, \
-    load_matrix_conf_from_state, MatrixConf, subdivide_random_matrix_into_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B
+    load_matrix_conf_from_state, MatrixConf, subdivide_random_matrix_into_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
+    subdivide_matrix_into_file, reconstruct_matrix_from_file
 
 
 class TestMatrices(unittest.TestCase):
@@ -33,6 +34,14 @@ class TestMatrices(unittest.TestCase):
         subdivide_matrix_into_state(mat_a, self.key)
         actual = reconstruct_matrix_from_submatrices(self.key)
 
+        self.assertTrue(np.array_equal(mat_a, actual))
+
+    def test_matrix_file_round_trip(self):
+        mat_a = np.random.rand(MatrixConf.matrix_size, MatrixConf.matrix_size)
+        file_path = "/tmp/mat_test"
+        subdivide_matrix_into_file(mat_a, file_path)
+
+        actual = reconstruct_matrix_from_file(file_path)
         self.assertTrue(np.array_equal(mat_a, actual))
 
     def test_reading_submatrix_from_state(self):

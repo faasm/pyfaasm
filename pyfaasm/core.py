@@ -61,6 +61,10 @@ def pushState(key):
     cf.faasm_push_state(key)
 
 
+def pushStatePartial(key):
+    cf.faasm_push_state_partial(key)
+
+
 def pullState(key, state_len):
     cf.faasm_pull_state(key, state_len)
 
