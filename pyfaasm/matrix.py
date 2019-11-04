@@ -1,10 +1,11 @@
 import numpy as np
 from numpy import int32
 
-from pyfaasm.config import MATRIX_CONF_STATE_KEY, MatrixConf, NP_ELEMENT_SIZE, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
-    RESULT_MATRIX_KEY
+from pyfaasm.config import MATRIX_CONF_STATE_KEY, MatrixConf, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
+    RESULT_MATRIX_KEY, set_up_config, get_submatrix_byte_offset, NP_ELEMENT_SIZE
 from pyfaasm.core import setState, getStateOffset, getState, chainThisWithInput, awaitCall, setStateOffset, \
     registerFunction, pushStatePartial
+from pyfaasm.matrix_data import do_subdivide_matrix, do_reconstruct_matrix
 
 
 def write_matrix_params_to_state(matrix_size, n_splits):
@@ -13,11 +14,6 @@ def write_matrix_params_to_state(matrix_size, n_splits):
 
 
 def load_matrix_conf_from_state():
-    if MatrixConf.initialised:
-        return
-
-    MatrixConf.initialised = True
-
     # Params are ints so need to work out what size they are
     dummy = np.array((1, 2), dtype=int32)
     param_len = len(dummy.tobytes())
@@ -27,19 +23,9 @@ def load_matrix_conf_from_state():
     matrix_size = params[0]
     n_splits = params[1]
 
-    # Remember we're dealing with square matrices and splitting the matrix into
-    # four pieces each time we do the divide in the divide and conquer.
-    # The number of splits is how many times we're dividing the origin matrices.
+    set_up_config(matrix_size, n_splits)
 
-    MatrixConf.matrix_size = matrix_size
-    MatrixConf.n_splits = n_splits
-    MatrixConf.bytes_per_matrix = (matrix_size * matrix_size) * NP_ELEMENT_SIZE
-    MatrixConf.submatrices_per_row = 2 ** n_splits
-    MatrixConf.quadrants_per_row = 2 ** (n_splits - 1)
-    MatrixConf.submatrix_size = matrix_size // MatrixConf.submatrices_per_row
-    MatrixConf.bytes_per_submatrix = (MatrixConf.submatrix_size * MatrixConf.submatrix_size) * NP_ELEMENT_SIZE
-
-    print("---- Matrix divide and conquer ----")
+    print("---- Matrix config ----")
     print("np_element_size {}".format(NP_ELEMENT_SIZE))
     print("matrix_size {}".format(MatrixConf.matrix_size))
     print("n_splits {}".format(MatrixConf.n_splits))
@@ -47,12 +33,6 @@ def load_matrix_conf_from_state():
     print("submatrix_size {}".format(MatrixConf.submatrix_size))
     print("bytes_per_submatrix {}".format(MatrixConf.bytes_per_submatrix))
     print("bytes_per_matrix {}".format(MatrixConf.bytes_per_matrix))
-
-
-# Returns the offset of a given submatrix in the overall byte array
-def _get_submatrix_byte_offset(row_idx, col_idx):
-    return (row_idx * MatrixConf.bytes_per_submatrix * MatrixConf.submatrices_per_row) + \
-           (col_idx * MatrixConf.bytes_per_submatrix)
 
 
 # Create a random matrix split up in state
@@ -71,82 +51,21 @@ def subdivide_random_matrix_into_state(key):
 # Write each submatrix as a region of contiguous bytes
 # All submatrices appended into one byte stream
 def subdivide_matrix_into_state(mat, key):
-    _do_subdivide_matrix(mat, state_key=key)
-
-
-def subdivide_matrix_into_file(mat, file_path):
-    _do_subdivide_matrix(mat, file_path=file_path)
-
-
-def _do_subdivide_matrix(mat, state_key=None, file_path=None):
-    # Step through rows and columns of original matrix, appending submatrix bytes
-    # to the overall byte stream
-    all_bytes = b''
-    for row_idx in range(0, MatrixConf.submatrices_per_row):
-        for col_idx in range(0, MatrixConf.submatrices_per_row):
-            # Work out the position of the top left and bottom right corner of the submatrix
-            row_start = row_idx * MatrixConf.submatrix_size
-            col_start = col_idx * MatrixConf.submatrix_size
-
-            row_end = row_start + MatrixConf.submatrix_size
-            col_end = col_start + MatrixConf.submatrix_size
-
-            # Extract the submatrix and write to bytes
-            sub_mat = mat[row_start:row_end, col_start:col_end]
-            all_bytes += sub_mat.tobytes()
-
-    # Write these bytes to state
-    if state_key:
-        setState(state_key, all_bytes)
-    elif file_path:
-        with open(file_path, "wb") as fh:
-            fh.write(all_bytes)
-    else:
-        print("Must specify state or file as destination")
+    all_bytes = do_subdivide_matrix(mat)
+    setState(key, all_bytes)
 
 
 # Reads a given submatrix from state
 def read_submatrix_from_state(key, row_idx, col_idx):
-    offset = _get_submatrix_byte_offset(row_idx, col_idx)
+    offset = get_submatrix_byte_offset(row_idx, col_idx)
     sub_mat_bytes = getStateOffset(key, MatrixConf.bytes_per_matrix, offset, MatrixConf.bytes_per_submatrix)
     return np.frombuffer(sub_mat_bytes).reshape(MatrixConf.submatrix_size, MatrixConf.submatrix_size)
-
-
-def reconstruct_matrix_from_file(file_path):
-    with open(file_path, "rb") as fh:
-        all_bytes = fh.read()
-
-    return _do_reconstruct_matrix(all_bytes)
 
 
 # Rebuilds a matrix from its submatrices in state
 def reconstruct_matrix_from_submatrices(key):
     all_bytes = getState(key, MatrixConf.bytes_per_matrix)
-    return _do_reconstruct_matrix(all_bytes)
-
-
-def _do_reconstruct_matrix(all_bytes):
-    result = None
-
-    # Need to read in row by row concatenate the rows
-    for row_idx in range(0, MatrixConf.submatrices_per_row):
-        submatrices = []
-        for col_idx in range(0, MatrixConf.submatrices_per_row):
-            byte_idx = _get_submatrix_byte_offset(row_idx, col_idx)
-            this_submat = np.frombuffer(all_bytes[byte_idx: byte_idx + MatrixConf.bytes_per_submatrix])
-            this_submat = this_submat.reshape(MatrixConf.submatrix_size, MatrixConf.submatrix_size)
-            submatrices.append(this_submat)
-
-        this_row = np.concatenate(submatrices, axis=1)
-
-        if row_idx == 0:
-            # Initialise the result
-            result = this_row
-        else:
-            # Add the row to the existing result
-            result = np.concatenate((result, this_row), axis=0)
-
-    return result
+    return do_reconstruct_matrix(all_bytes)
 
 
 def do_multiplication(quad_row_idx, quad_col_idx):
@@ -177,7 +96,7 @@ def do_multiplication(quad_row_idx, quad_col_idx):
     ), axis=0)
 
     # Write to state
-    result_offset = _get_submatrix_byte_offset(row_idx, col_idx)
+    result_offset = get_submatrix_byte_offset(row_idx, col_idx)
     setStateOffset(RESULT_MATRIX_KEY, MatrixConf.bytes_per_matrix, result_offset, result.tobytes())
     pushStatePartial(RESULT_MATRIX_KEY)
 
@@ -197,6 +116,11 @@ def distributed_divide_and_conquer(input_bytes):
 
 def divide_and_conquer():
     load_matrix_conf_from_state()
+    print("Running divide and conquer for {}x{} matrix with {} splits".format(
+        MatrixConf.matrix_size,
+        MatrixConf.matrix_size,
+        MatrixConf.n_splits
+    ))
 
     # To keep things working in native python
     registerFunction(1, distributed_divide_and_conquer)
