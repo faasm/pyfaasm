@@ -121,6 +121,10 @@ def awaitCall(call_id):
 
 
 def setEmulatorMessage(messageJson):
+    if PYTHON_LOCAL_OUTPUT:
+        global output_data
+        output_data = None
+
     cf.set_emulator_message(messageJson)
 
 

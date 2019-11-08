@@ -66,3 +66,9 @@ source workon.sh
 pip install -U pyfaasm
 inv set-up-python-package pyfaasm
 ```
+
+Once you're finally happy you need to update the remote copy of the runtime root, i.e.:
+
+```
+inv backup-runtime-root
+```
