@@ -18,21 +18,23 @@ class MatrixConf:
     bytes_per_submatrix = 0
 
 
-def set_up_config(matrix_size, n_splits):
+def generate_matrix_conf(matrix_size, n_splits):
     # Remember we're dealing with square matrices and splitting the matrix into
     # four pieces each time we do the divide in the divide and conquer.
     # The number of splits is how many times we're dividing the origin matrices.
 
-    MatrixConf.matrix_size = matrix_size
-    MatrixConf.n_splits = n_splits
-    MatrixConf.bytes_per_matrix = (matrix_size * matrix_size) * NP_ELEMENT_SIZE
-    MatrixConf.submatrices_per_row = 2 ** n_splits
-    MatrixConf.quadrants_per_row = 2 ** (n_splits - 1)
-    MatrixConf.submatrix_size = matrix_size // MatrixConf.submatrices_per_row
-    MatrixConf.bytes_per_submatrix = (MatrixConf.submatrix_size * MatrixConf.submatrix_size) * NP_ELEMENT_SIZE
+    c = MatrixConf()
+    c.matrix_size = matrix_size
+    c.n_splits = n_splits
+    c.bytes_per_matrix = (matrix_size * matrix_size) * NP_ELEMENT_SIZE
+    c.submatrices_per_row = 2 ** n_splits
+    c.quadrants_per_row = 2 ** (n_splits - 1)
+    c.submatrix_size = matrix_size // c.submatrices_per_row
+    c.bytes_per_submatrix = (c.submatrix_size * c.submatrix_size) * NP_ELEMENT_SIZE
+
+    return c
 
 
 # Returns the offset of a given submatrix in the overall byte array
-def get_submatrix_byte_offset(row_idx, col_idx):
-    return (row_idx * MatrixConf.bytes_per_submatrix * MatrixConf.submatrices_per_row) + \
-           (col_idx * MatrixConf.bytes_per_submatrix)
+def get_submatrix_byte_offset(conf, row_idx, col_idx):
+    return (row_idx * conf.bytes_per_submatrix * conf.submatrices_per_row) + (col_idx * conf.bytes_per_submatrix)
