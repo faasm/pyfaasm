@@ -259,7 +259,15 @@ static PyObject *faasm_await_call(PyObject *self, PyObject *args) {
         return NULL;
     }
 
-    int result = __faasm_await_call((unsigned int) messageId);
+    // Here we may be awaiting the result of a call for some time, therefore
+    // we need to release the GIL and reacquire once done.
+    // See https://docs.python.org/3/c-api/init.html#releasing-the-gil-from-extension-code
+    int result = 0;
+    Py_BEGIN_ALLOW_THREADS
+
+    result = __faasm_await_call((unsigned int) messageId);
+
+    Py_END_ALLOW_THREADS
 
     return Py_BuildValue("i", result);
 }
