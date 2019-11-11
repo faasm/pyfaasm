@@ -125,7 +125,7 @@ def setEmulatorMessage(messageJson):
         global output_data
         output_data = None
 
-    cf.set_emulator_message(messageJson)
+    return cf.set_emulator_message(messageJson)
 
 
 def emulatorSetStatus(success):

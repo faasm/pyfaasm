@@ -1,8 +1,6 @@
 import unittest
 from json import dumps
 
-from parameterized import parameterized
-
 from pyfaasm.core import setLocalInputOutput, \
     setEmulatorMessage, getOutput, setOutput, PYTHON_LOCAL_OUTPUT
 
@@ -64,3 +62,13 @@ class TestEmulator(unittest.TestCase):
 
         # Check output is now empty
         self.assertIsNone(getOutput())
+
+    def test_setting_emulator_message_returns_id(self):
+        msg = {
+            "user": "foo",
+            "function": "bar",
+        }
+        json_msg = dumps(msg)
+        actual = setEmulatorMessage(json_msg)
+
+        self.assertGreater(actual, 0)
