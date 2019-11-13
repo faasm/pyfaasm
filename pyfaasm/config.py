@@ -41,18 +41,39 @@ def get_submatrix_byte_offset(conf, row_idx, col_idx):
 
 
 # Gets the key for storing the given quadrant's result
-def get_quadrant_key(split_level, row_idx_a, col_idx_a, row_idx_b, col_idx_b):
-    key = "matrix_result_split_{}_{}{}{}{}".format(split_level, row_idx_a, col_idx_a, row_idx_b, col_idx_b)
+def get_quadrant_key(split_level, row_a, col_a, row_b, col_b):
+    key = "matrix_result_split_{}_{}{}{}{}".format(split_level, row_a, col_a, row_b, col_b)
     return key
 
 
-# Get the total length of a quadrant and the offset for the given quarter
-def get_quadrant_len_and_offset(conf, split_level, quarter_idx):
-    quadrant_size = conf.matrix_size // (2 * split_level)
-    bytes_per_quadrant = (quadrant_size * quadrant_size) * NP_ELEMENT_SIZE
+# Gets the key for storing the parent quadrant's result
+def get_parent_quadrant_key(split_level, row_a, col_a, row_b, col_b):
+    # Use integer division to get parent quadrant
+    parent_row_a = row_a // 2
+    parent_col_a = col_a // 2
+    parent_row_b = row_b // 2
+    parent_col_b = col_b // 2
 
-    quarter_size = quadrant_size // 2
+    parent_split_level = split_level - 1
+
+    return get_quadrant_key(parent_split_level, parent_row_a, parent_col_a, parent_row_b, parent_col_b)
+
+
+def get_parent_quadrant_result_len(conf, split_level):
+    return get_quadrant_result_len(conf, split_level - 1)
+
+
+# Each quadrant result holds the output of EIGHT multiplications of the next split level
+def get_quadrant_result_len(conf, split_level):
+    submatrix_size = conf.matrix_size // (2 * (split_level+1))
+    result_len = 8 * (submatrix_size * submatrix_size) * NP_ELEMENT_SIZE
+
+    return result_len
+
+
+def get_quarter_offset_and_length(conf, split_level, quarter_idx):
+    quarter_size = conf.matrix_size // (4 * split_level)
     bytes_per_quarter = (quarter_size * quarter_size) * NP_ELEMENT_SIZE
     quarter_offset = quarter_idx * bytes_per_quarter
 
-    return bytes_per_quadrant, quarter_offset, bytes_per_quarter
+    return quarter_offset, bytes_per_quarter
