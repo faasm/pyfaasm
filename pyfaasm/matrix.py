@@ -3,7 +3,8 @@ from numpy import int32
 
 from pyfaasm.config import MATRIX_CONF_STATE_KEY, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
     get_submatrix_byte_offset, NP_ELEMENT_SIZE, generate_matrix_conf, get_quadrant_key, \
-    get_parent_quadrant_key, get_quarter_offset_and_length, get_parent_quadrant_result_len, get_quadrant_result_len
+    get_parent_quadrant_key, get_quarter_offset_and_length, get_parent_quadrant_result_len, get_quadrant_result_len, \
+    RESULT_MATRIX_KEY
 from pyfaasm.core import setState, getStateOffset, getState, chainThisWithInput, awaitCall, setStateOffset, \
     registerFunction
 from pyfaasm.matrix_data import do_subdivide_matrix, do_reconstruct_matrix
@@ -79,27 +80,33 @@ def distributed_divide_and_conquer(input_bytes):
 
     split_level = input_args[0]
     quarter_idx = input_args[1]
-    row_a = input_args[2]
-    col_a = input_args[3]
-    row_b = input_args[4]
-    col_b = input_args[5]
+    quadrant_row_a = input_args[2]
+    quadrant_col_a = input_args[3]
+    quadrant_row_b = input_args[4]
+    quadrant_col_b = input_args[5]
 
     # If we're at the target number of splits, do the work
     if split_level == conf.n_splits:
+        submatrix_row_a = quadrant_row_a * 2
+        submatrix_col_a = quadrant_col_a * 2
+        submatrix_row_b = quadrant_row_b * 2
+        submatrix_col_b = quadrant_col_b * 2
+
         # Read in the relevant submatrices of each input matrix
-        mat_a = read_submatrix_from_state(conf, SUBMATRICES_KEY_A, row_a, col_a)
-        mat_b = read_submatrix_from_state(conf, SUBMATRICES_KEY_B, row_b, col_b)
+        mat_a = read_submatrix_from_state(conf, SUBMATRICES_KEY_A, submatrix_row_a, submatrix_col_a)
+        mat_b = read_submatrix_from_state(conf, SUBMATRICES_KEY_B, submatrix_row_b, submatrix_col_b)
 
         # Do the multiplication in memory
         result = np.dot(mat_a, mat_b)
     else:
         # Recursively kick off more divide and conquer
-        result = chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b)
+        result = chain_multiplications(conf, split_level, quadrant_row_a, quadrant_row_b, quadrant_row_b,
+                                       quadrant_col_b)
 
     # Write the result
     this_offset, _ = get_quarter_offset_and_length(conf, split_level, quarter_idx)
     total_result_len = get_parent_quadrant_result_len(conf, split_level)
-    state_key = get_parent_quadrant_key(split_level, row_a, col_a, row_b, col_b)
+    state_key = get_parent_quadrant_key(split_level, quadrant_row_a, quadrant_row_b, quadrant_row_b, quadrant_col_b)
 
     # Set the result
     setStateOffset(state_key, total_result_len, this_offset, result.tobytes())
@@ -117,7 +124,10 @@ def divide_and_conquer():
     registerFunction(1, distributed_divide_and_conquer)
 
     # Kick off the basic multiplication jobs
-    return chain_multiplications(conf, 0, 0, 0, 0, 0)
+    result = chain_multiplications(conf, 0, 0, 0, 0, 0)
+
+    # Write final result
+    setState(RESULT_MATRIX_KEY, result.tobytes())
 
 
 # Spawns 8 workers to do the relevant multiplication in parallel
@@ -142,14 +152,14 @@ def chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b):
     # Kick off all the relevant multiplications (8 calls in total)
     # Need to tell each one which of the 8 multiplications it is so it can
     # write its result
-    for result_idx, mult_one, mult_two in enumerate(multiplications):
+    for result_idx, idx_offsets in enumerate(multiplications):
         # First call
         inputs_a = np.array([
             next_split_level,
             result_idx,
-            next_row_a + mult_one[0], next_col_a + mult_one[1],
-            next_row_b + mult_one[2], next_col_b + mult_one[3],
-        ])
+            next_row_a + idx_offsets[0][0], next_col_a + idx_offsets[0][1],
+            next_row_b + idx_offsets[0][2], next_col_b + idx_offsets[0][3],
+        ], dtype=int32)
 
         call_ids.append(chainThisWithInput(1, inputs_a.tobytes()))
 
@@ -157,9 +167,9 @@ def chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b):
         inputs_b = np.array([
             next_split_level,
             result_idx + 1,
-            next_row_a + mult_two[0], next_col_a + mult_two[1],
-            next_row_b + mult_two[2], next_col_b + mult_two[3],
-        ])
+            next_row_a + idx_offsets[1][0], next_col_a + idx_offsets[1][1],
+            next_row_b + idx_offsets[1][2], next_col_b + idx_offsets[1][3],
+        ], dtype=int32)
 
         call_ids.append(chainThisWithInput(1, inputs_b.tobytes()))
 
@@ -175,7 +185,7 @@ def chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b):
     quarters = []
     for i in [0, 2, 4, 6]:
         offset_a, quarter_len = get_quarter_offset_and_length(conf, next_split_level, i)
-        offset_b, _ = get_quarter_offset_and_length(conf, next_split_level, i+1)
+        offset_b, _ = get_quarter_offset_and_length(conf, next_split_level, i + 1)
 
         r_a = np.frombuffer(quadrant_result[offset_a:offset_a + quarter_len])
         r_b = np.frombuffer(quadrant_result[offset_b:offset_b + quarter_len])

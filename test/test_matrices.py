@@ -4,9 +4,10 @@ from json import dumps
 import numpy as np
 import redis
 
+from pyfaasm.config import RESULT_MATRIX_KEY
 from pyfaasm.core import setState, setEmulatorMessage
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
-    read_submatrix_from_state, divide_and_conquer, RESULT_MATRIX_KEY, write_matrix_params_to_state, \
+    read_submatrix_from_state, divide_and_conquer, write_matrix_params_to_state, \
     load_matrix_conf_from_state, subdivide_random_matrix_into_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B
 from pyfaasm.matrix_data import subdivide_matrix_into_file, reconstruct_matrix_from_file
 
