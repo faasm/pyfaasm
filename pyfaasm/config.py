@@ -38,3 +38,21 @@ def generate_matrix_conf(matrix_size, n_splits):
 # Returns the offset of a given submatrix in the overall byte array
 def get_submatrix_byte_offset(conf, row_idx, col_idx):
     return (row_idx * conf.bytes_per_submatrix * conf.submatrices_per_row) + (col_idx * conf.bytes_per_submatrix)
+
+
+# Gets the key for storing the given quadrant's result
+def get_quadrant_key(split_level, row_idx_a, col_idx_a, row_idx_b, col_idx_b):
+    key = "matrix_result_split_{}_{}{}{}{}".format(split_level, row_idx_a, col_idx_a, row_idx_b, col_idx_b)
+    return key
+
+
+# Get the total length of a quadrant and the offset for the given quarter
+def get_quadrant_len_and_offset(conf, split_level, quarter_idx):
+    quadrant_size = conf.matrix_size // (2 * split_level)
+    bytes_per_quadrant = (quadrant_size * quadrant_size) * NP_ELEMENT_SIZE
+
+    quarter_size = quadrant_size // 2
+    bytes_per_quarter = (quarter_size * quarter_size) * NP_ELEMENT_SIZE
+    quarter_offset = quarter_idx * bytes_per_quarter
+
+    return bytes_per_quadrant, quarter_offset, bytes_per_quarter
