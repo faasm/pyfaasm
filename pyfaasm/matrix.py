@@ -2,11 +2,9 @@ import numpy as np
 from numpy import int32
 
 from pyfaasm.config import MATRIX_CONF_STATE_KEY, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
-    get_submatrix_byte_offset, NP_ELEMENT_SIZE, generate_matrix_conf, get_quadrant_key, \
-    get_parent_quadrant_key, get_quarter_offset_and_length, get_parent_quadrant_result_len, get_quadrant_result_len, \
-    RESULT_MATRIX_KEY
+    NP_ELEMENT_SIZE, RESULT_MATRIX_KEY, MatrixConf
 from pyfaasm.core import setState, getStateOffset, getState, chainThisWithInput, awaitCall, setStateOffset, \
-    registerFunction
+    registerFunction, pullState
 from pyfaasm.matrix_data import do_subdivide_matrix, do_reconstruct_matrix
 
 
@@ -25,15 +23,12 @@ def load_matrix_conf_from_state():
     matrix_size = params[0]
     n_splits = params[1]
 
-    conf = generate_matrix_conf(matrix_size, n_splits)
+    conf = MatrixConf(matrix_size, n_splits)
 
     print("---- Matrix config ----")
     print("np_element_size {}".format(NP_ELEMENT_SIZE))
     print("matrix_size {}".format(conf.matrix_size))
     print("n_splits {}".format(conf.n_splits))
-    print("submatrices_per_row {}".format(conf.submatrices_per_row))
-    print("submatrix_size {}".format(conf.submatrix_size))
-    print("bytes_per_submatrix {}".format(conf.bytes_per_submatrix))
     print("bytes_per_matrix {}".format(conf.bytes_per_matrix))
 
     return conf
@@ -59,11 +54,15 @@ def subdivide_matrix_into_state(conf, mat, key):
     setState(key, all_bytes)
 
 
-# Reads a given submatrix from state
-def read_submatrix_from_state(conf, key, row_idx, col_idx):
-    offset = get_submatrix_byte_offset(conf, row_idx, col_idx)
-    sub_mat_bytes = getStateOffset(key, conf.bytes_per_matrix, offset, conf.bytes_per_submatrix)
-    return np.frombuffer(sub_mat_bytes).reshape(conf.submatrix_size, conf.submatrix_size)
+# Reads a given submatrix from the input
+def read_input_submatrix(conf, key, row_idx, col_idx):
+    offset = conf.get_submatrix_byte_offset(0, row_idx, col_idx)
+    sm_bytes = conf.get_bytes_per_submatrix(0)
+    sm_size = conf.get_submatrix_size(0)
+
+    sub_mat_bytes = getStateOffset(key, sm_bytes, offset, sm_bytes)
+
+    return np.frombuffer(sub_mat_bytes).reshape(sm_size, sm_size)
 
 
 # Rebuilds a matrix from its submatrices in state
@@ -79,37 +78,26 @@ def distributed_divide_and_conquer(input_bytes):
     input_args = np.frombuffer(input_bytes, dtype=int32)
 
     split_level = input_args[0]
-    quarter_idx = input_args[1]
-    quadrant_row_a = input_args[2]
-    quadrant_col_a = input_args[3]
-    quadrant_row_b = input_args[4]
-    quadrant_col_b = input_args[5]
+    row_a = input_args[1]
+    col_a = input_args[2]
+    row_b = input_args[3]
+    col_b = input_args[4]
 
     # If we're at the target number of splits, do the work
     if split_level == conf.n_splits:
-        submatrix_row_a = quadrant_row_a * 2
-        submatrix_col_a = quadrant_col_a * 2
-        submatrix_row_b = quadrant_row_b * 2
-        submatrix_col_b = quadrant_col_b * 2
-
         # Read in the relevant submatrices of each input matrix
-        mat_a = read_submatrix_from_state(conf, SUBMATRICES_KEY_A, submatrix_row_a, submatrix_col_a)
-        mat_b = read_submatrix_from_state(conf, SUBMATRICES_KEY_B, submatrix_row_b, submatrix_col_b)
+        mat_a = read_input_submatrix(conf, SUBMATRICES_KEY_A, row_a, col_a)
+        mat_b = read_input_submatrix(conf, SUBMATRICES_KEY_B, row_b, col_b)
 
         # Do the multiplication in memory
         result = np.dot(mat_a, mat_b)
     else:
         # Recursively kick off more divide and conquer
-        result = chain_multiplications(conf, split_level, quadrant_row_a, quadrant_row_b, quadrant_row_b,
-                                       quadrant_col_b)
+        result = chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b)
 
     # Write the result
-    this_offset, _ = get_quarter_offset_and_length(conf, split_level, quarter_idx)
-    total_result_len = get_parent_quadrant_result_len(conf, split_level)
-    state_key = get_parent_quadrant_key(split_level, quadrant_row_a, quadrant_row_b, quadrant_row_b, quadrant_col_b)
-
-    # Set the result
-    setStateOffset(state_key, total_result_len, this_offset, result.tobytes())
+    result_key = conf.get_intermediate_result_key(split_level, row_a, col_a, row_b, col_b)
+    setState(result_key, result.tobytes())
 
 
 def divide_and_conquer():
@@ -130,73 +118,95 @@ def divide_and_conquer():
     setState(RESULT_MATRIX_KEY, result.tobytes())
 
 
-# Spawns 8 workers to do the relevant multiplication in parallel
+def get_addition_result(conf, split_level, addition_def):
+    sm_size = conf.get_submatrix_size(split_level)
+    sm_byte_szie = conf.get_bytes_per_submatrix(split_level)
+
+    key_a = conf.get_intermediate_result_key(split_level,
+                                             addition_def[0][0][0], addition_def[0][0][1],
+                                             addition_def[0][1][0], addition_def[0][1][1],
+                                             )
+
+    key_b = conf.get_intermediate_result_key(split_level,
+                                             addition_def[1][0][0], addition_def[0][0][1],
+                                             addition_def[1][1][0], addition_def[0][1][1],
+                                             )
+
+    bytes_a = getState(key_a, sm_byte_szie)
+    mat_a = np.frombuffer(bytes_a).reshape(sm_size, sm_size)
+
+    bytes_b = getState(key_b, sm_byte_szie)
+    mat_b = np.frombuffer(bytes_b).reshape(sm_size, sm_size)
+
+    return mat_a + mat_b
+
+
 def chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b):
+    """
+    Spawns 8 workers to do the relevant multiplication in parallel.
+    - split level is how many times we've split the original matrix
+    - row_a, col_a is the chunk of matrix A
+    - row_b, col_b is the chunk of matrix B
+
+    The row/ col values will specify which chunk of the current split level, not
+    actual indices in the final input matrices. Those must only be calculated
+    when the final multiplication is done.
+    """
     call_ids = []
 
+    # Next split down we'll double the number of submatrices
     next_split_level = split_level + 1
-
     next_row_a = 2 * row_a
     next_row_b = 2 * row_b
     next_col_a = 2 * col_a
     next_col_b = 2 * col_b
 
-    # Multiplications expressed as quadrants from top left of each input matrix
-    multiplications = [
-        # A11.B11 + A12.B21 | A11.B12 + A12.B22
-        [(0, 0, 0, 0), (0, 1, 1, 0)], [(0, 0, 0, 1), (0, 1, 1, 1)],
-        # A21.B11 + A22.B21 | A21.B12 + A22.B22
-        [(1, 0, 0, 0), (1, 1, 1, 0)], [(1, 0, 0, 1), (1, 1, 1, 1)],
+    # Splitting submatrix A into four, A11, A12, A21, A22 and same with B
+    a11 = [next_row_a, next_col_a]
+    a12 = [next_row_a, next_col_a + 1]
+    a21 = [next_row_a + 1, next_col_a]
+    a22 = [next_row_a + 1, next_col_a + 1]
+
+    b11 = [next_row_b, next_col_b]
+    b12 = [next_row_b, next_col_b + 1]
+    b21 = [next_row_b + 1, next_col_b]
+    b22 = [next_row_b + 1, next_col_b + 1]
+
+    # Define the relevant multiplications and additions for these submatrices
+    additions = [
+        [(a11, b11), (a12, b21)], [(a11, b12), (a12, b22)],
+        [(a21, b11), (a22, b21)], [(a21, b12), (a22, b22)],
     ]
 
-    # Kick off all the relevant multiplications (8 calls in total)
-    # Need to tell each one which of the 8 multiplications it is so it can
-    # write its result
-    for result_idx, idx_offsets in enumerate(multiplications):
-        # First call
+    # Build a list of all the required multiplications
+    multiplications = list()
+    for mult_one, mult_two in additions:
+        multiplications.append((mult_one, mult_two))
+
+    # Kick off the multiplications in parallel
+    for submatrix_a, submatrix_b in multiplications:
         inputs_a = np.array([
             next_split_level,
-            result_idx,
-            next_row_a + idx_offsets[0][0], next_col_a + idx_offsets[0][1],
-            next_row_b + idx_offsets[0][2], next_col_b + idx_offsets[0][3],
+            submatrix_a[0], submatrix_a[1],
+            submatrix_b[0], submatrix_b[1],
         ], dtype=int32)
 
         call_ids.append(chainThisWithInput(1, inputs_a.tobytes()))
-
-        # Second call
-        inputs_b = np.array([
-            next_split_level,
-            result_idx + 1,
-            next_row_a + idx_offsets[1][0], next_col_a + idx_offsets[1][1],
-            next_row_b + idx_offsets[1][2], next_col_b + idx_offsets[1][3],
-        ], dtype=int32)
-
-        call_ids.append(chainThisWithInput(1, inputs_b.tobytes()))
 
     # Await completion
     for call_id in call_ids:
         awaitCall(call_id)
 
-    # Read the full results for this quadrant
-    state_key = get_quadrant_key(split_level, row_a, col_a, row_b, col_b)
-    result_len = get_quadrant_result_len(conf, split_level)
-    quadrant_result = getState(state_key, result_len)
-
-    quarters = []
-    for i in [0, 2, 4, 6]:
-        offset_a, quarter_len = get_quarter_offset_and_length(conf, next_split_level, i)
-        offset_b, _ = get_quarter_offset_and_length(conf, next_split_level, i + 1)
-
-        r_a = np.frombuffer(quadrant_result[offset_a:offset_a + quarter_len])
-        r_b = np.frombuffer(quadrant_result[offset_b:offset_b + quarter_len])
-
-        # Actually do the addition of the matrices
-        quarters.append(r_a + r_b)
+    # Go through and get the results
+    r_1 = get_addition_result(conf, next_split_level, additions[0])
+    r_2 = get_addition_result(conf, next_split_level, additions[1])
+    r_3 = get_addition_result(conf, next_split_level, additions[2])
+    r_4 = get_addition_result(conf, next_split_level, additions[3])
 
     # Reconstitute the result
     result = np.concatenate((
-        np.concatenate((quarters[0], quarters[1]), axis=1),
-        np.concatenate((quarters[2], quarters[3]), axis=1)
+        np.concatenate((r_1, r_2), axis=1),
+        np.concatenate((r_3, r_4), axis=1)
     ), axis=0)
 
     return result

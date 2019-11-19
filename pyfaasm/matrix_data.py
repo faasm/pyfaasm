@@ -1,7 +1,5 @@
 import numpy as np
 
-from pyfaasm.config import get_submatrix_byte_offset
-
 
 def subdivide_matrix_into_file(conf, mat, file_path):
     all_bytes = do_subdivide_matrix(conf, mat)
@@ -14,8 +12,10 @@ def do_subdivide_matrix(conf, mat):
     # Step through rows and columns of original matrix, appending submatrix bytes
     # to the overall byte stream
     all_bytes = b''
-    for row_idx in range(0, conf.submatrices_per_row):
-        for col_idx in range(0, conf.submatrices_per_row):
+    sm_per_row = conf.get_submatrices_per_row(0)
+
+    for row_idx in range(0, sm_per_row):
+        for col_idx in range(0, sm_per_row):
             # Work out the position of the top left and bottom right corner of the submatrix
             row_start = row_idx * conf.submatrix_size
             col_start = col_idx * conf.submatrix_size
@@ -44,7 +44,7 @@ def do_reconstruct_matrix(conf, all_bytes):
     for row_idx in range(0, conf.submatrices_per_row):
         submatrices = []
         for col_idx in range(0, conf.submatrices_per_row):
-            byte_idx = get_submatrix_byte_offset(conf, row_idx, col_idx)
+            byte_idx = conf.get_submatrix_byte_offset(0, row_idx, col_idx)
             this_submat = np.frombuffer(all_bytes[byte_idx: byte_idx + conf.bytes_per_submatrix])
             this_submat = this_submat.reshape(conf.submatrix_size, conf.submatrix_size)
             submatrices.append(this_submat)
