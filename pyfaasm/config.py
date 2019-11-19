@@ -31,3 +31,8 @@ class MatrixConf(object):
     def get_intermediate_result_key(self, split_level, row_a, col_a, row_b, col_b):
         key = "intermediate_{}_{}_{}_{}_{}".format(split_level, row_a, col_a, row_b, col_b)
         return key
+
+    def get_submatrix_key(self, key_prefix, split_level, row_idx, col_idx):
+        full_key = "{}_{}_{}_{}".format(key_prefix, split_level, row_idx, col_idx)
+        return full_key
+

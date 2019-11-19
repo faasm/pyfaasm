@@ -26,15 +26,10 @@ def load_matrix_conf_from_state():
     return conf
 
 
-def _get_submatrix_key(conf, key_prefix, row_idx, col_idx):
-    full_key = "{}_{}_{}_{}".format(key_prefix, conf.n_splits, row_idx, col_idx)
-    return full_key
-
-
 # Split up the original matrix into square submatrices and write to state
 def subdivide_matrix_into_state(conf, mat, key_prefix):
     def _write_submatrix_to_state(sm_bytes, row_idx, col_idx):
-        full_key = _get_submatrix_key(conf, key_prefix, row_idx, col_idx)
+        full_key = conf.get_submatrix_key(key_prefix, conf.n_splits, row_idx, col_idx)
         setState(full_key, sm_bytes)
 
     do_subdivide_matrix(conf, mat, _write_submatrix_to_state)
@@ -44,7 +39,7 @@ def subdivide_matrix_into_state(conf, mat, key_prefix):
 def read_input_submatrix(conf, key_prefix, row_idx, col_idx):
     sm_bytes = conf.get_bytes_per_submatrix(conf.n_splits)
     sm_size = conf.get_submatrix_size(conf.n_splits)
-    full_key = _get_submatrix_key(conf, key_prefix, row_idx, col_idx)
+    full_key = conf.get_submatrix_key(key_prefix, conf.n_splits, row_idx, col_idx)
 
     sub_mat_data = getState(full_key, sm_bytes)
     return np.frombuffer(sub_mat_data).reshape(sm_size, sm_size)
@@ -53,7 +48,7 @@ def read_input_submatrix(conf, key_prefix, row_idx, col_idx):
 # Rebuilds a matrix from its submatrices in state
 def reconstruct_matrix_from_submatrices(conf, key_prefix):
     def _read_submatrix_from_state(row_idx, col_idx):
-        full_key = _get_submatrix_key(conf, key_prefix, row_idx, col_idx)
+        full_key = conf.get_submatrix_key(key_prefix, conf.n_splits, row_idx, col_idx)
         sm_bytes = conf.get_bytes_per_submatrix(conf.n_splits)
         return getState(full_key, sm_bytes)
 
