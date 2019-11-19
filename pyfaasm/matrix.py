@@ -1,10 +1,8 @@
 import numpy as np
 from numpy import int32
 
-from pyfaasm.config import MATRIX_CONF_STATE_KEY, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, \
-    NP_ELEMENT_SIZE, RESULT_MATRIX_KEY, MatrixConf
-from pyfaasm.core import setState, getStateOffset, getState, chainThisWithInput, awaitCall, setStateOffset, \
-    registerFunction, pullState
+from pyfaasm.config import MATRIX_CONF_STATE_KEY, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, MatrixConf, RESULT_MATRIX_KEY
+from pyfaasm.core import setState, getState, chainThisWithInput, awaitCall, registerFunction
 from pyfaasm.matrix_data import do_subdivide_matrix, do_reconstruct_matrix
 
 
@@ -25,50 +23,41 @@ def load_matrix_conf_from_state():
 
     conf = MatrixConf(matrix_size, n_splits)
 
-    print("---- Matrix config ----")
-    print("np_element_size {}".format(NP_ELEMENT_SIZE))
-    print("matrix_size {}".format(conf.matrix_size))
-    print("n_splits {}".format(conf.n_splits))
-    print("bytes_per_matrix {}".format(conf.bytes_per_matrix))
-
     return conf
 
 
-# Create a random matrix split up in state
-def subdivide_random_matrix_into_state(conf, key):
-    # Step through rows and columns of original matrix, generating random submatrices
-    all_bytes = b''
-    for row_idx in range(0, conf.submatrices_per_row):
-        for col_idx in range(0, conf.submatrices_per_row):
-            sub_mat = np.random.rand(conf.submatrix_size, conf.submatrix_size)
-            all_bytes += sub_mat.tobytes()
-
-    setState(key, all_bytes)
+def _get_submatrix_key(conf, key_prefix, row_idx, col_idx):
+    full_key = "{}_{}_{}_{}".format(key_prefix, conf.n_splits, row_idx, col_idx)
+    return full_key
 
 
 # Split up the original matrix into square submatrices and write to state
-# Write each submatrix as a region of contiguous bytes
-# All submatrices appended into one byte stream
-def subdivide_matrix_into_state(conf, mat, key):
-    all_bytes = do_subdivide_matrix(conf, mat)
-    setState(key, all_bytes)
+def subdivide_matrix_into_state(conf, mat, key_prefix):
+    def _write_submatrix_to_state(sm_bytes, row_idx, col_idx):
+        full_key = _get_submatrix_key(conf, key_prefix, row_idx, col_idx)
+        setState(full_key, sm_bytes)
+
+    do_subdivide_matrix(conf, mat, _write_submatrix_to_state)
 
 
 # Reads a given submatrix from the input
-def read_input_submatrix(conf, key, row_idx, col_idx):
-    offset = conf.get_submatrix_byte_offset(0, row_idx, col_idx)
-    sm_bytes = conf.get_bytes_per_submatrix(0)
-    sm_size = conf.get_submatrix_size(0)
+def read_input_submatrix(conf, key_prefix, row_idx, col_idx):
+    sm_bytes = conf.get_bytes_per_submatrix(conf.n_splits)
+    sm_size = conf.get_submatrix_size(conf.n_splits)
+    full_key = _get_submatrix_key(conf, key_prefix, row_idx, col_idx)
 
-    sub_mat_bytes = getStateOffset(key, sm_bytes, offset, sm_bytes)
-
-    return np.frombuffer(sub_mat_bytes).reshape(sm_size, sm_size)
+    sub_mat_data = getState(full_key, sm_bytes)
+    return np.frombuffer(sub_mat_data).reshape(sm_size, sm_size)
 
 
 # Rebuilds a matrix from its submatrices in state
-def reconstruct_matrix_from_submatrices(conf, key):
-    all_bytes = getState(key, conf.bytes_per_matrix)
-    return do_reconstruct_matrix(conf, all_bytes)
+def reconstruct_matrix_from_submatrices(conf, key_prefix):
+    def _read_submatrix_from_state(row_idx, col_idx):
+        full_key = _get_submatrix_key(conf, key_prefix, row_idx, col_idx)
+        sm_bytes = conf.get_bytes_per_submatrix(conf.n_splits)
+        return getState(full_key, sm_bytes)
+
+    return do_reconstruct_matrix(conf, _read_submatrix_from_state)
 
 
 # This is the distributed worker that will be invoked by faasm
@@ -128,8 +117,8 @@ def get_addition_result(conf, split_level, addition_def):
                                              )
 
     key_b = conf.get_intermediate_result_key(split_level,
-                                             addition_def[1][0][0], addition_def[0][0][1],
-                                             addition_def[1][1][0], addition_def[0][1][1],
+                                             addition_def[1][0][0], addition_def[1][0][1],
+                                             addition_def[1][1][0], addition_def[1][1][1],
                                              )
 
     bytes_a = getState(key_a, sm_byte_szie)
@@ -181,7 +170,8 @@ def chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b):
     # Build a list of all the required multiplications
     multiplications = list()
     for mult_one, mult_two in additions:
-        multiplications.append((mult_one, mult_two))
+        multiplications.append(mult_one)
+        multiplications.append(mult_two)
 
     # Kick off the multiplications in parallel
     for submatrix_a, submatrix_b in multiplications:
