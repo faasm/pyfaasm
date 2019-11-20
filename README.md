@@ -1,6 +1,6 @@
 # PyFaasm
 
-Python bindings for Faasm host interface.
+Python bindings for [Faasm](https://github.com/lsds/Faasm) host interface.
 
 ## Installing native Faasm tools
 
