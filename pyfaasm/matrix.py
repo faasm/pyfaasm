@@ -95,8 +95,17 @@ def divide_and_conquer():
     # To keep things working in native python
     registerFunction(1, distributed_divide_and_conquer)
 
-    # Kick off the basic multiplication jobs
-    result = chain_multiplications(conf, 0, 0, 0, 0, 0)
+    # Short-cut for no splits
+    if conf.n_splits == 0:
+        # Read in the relevant submatrices of each input matrix
+        mat_a = read_input_submatrix(conf, SUBMATRICES_KEY_A, 0, 0)
+        mat_b = read_input_submatrix(conf, SUBMATRICES_KEY_B, 0, 0)
+
+        # Do the multiplication in memory
+        result = np.dot(mat_a, mat_b)
+    else:
+        # Kick off the basic multiplication jobs
+        result = chain_multiplications(conf, 0, 0, 0, 0, 0)
 
     # Write final result
     setState(RESULT_MATRIX_KEY, result.tobytes())

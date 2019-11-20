@@ -53,7 +53,12 @@ class TestMatrices(unittest.TestCase):
 
         np.testing.assert_array_equal(mat_a, actual)
 
-    def test_matrix_file_round_trip(self):
+    @parameterized.expand([
+        (0,), (1,), (2,), (3,),
+    ])
+    def test_matrix_file_round_trip(self, split_level):
+        self.set_up_conf(split_level)
+
         mat_a = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
         mat_b = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
 
@@ -75,7 +80,7 @@ class TestMatrices(unittest.TestCase):
         np.testing.assert_array_equal(mat_b, actual_b)
 
     @parameterized.expand([
-        (2,), (3,), (4,),
+        (0,), (1,), (2,), (3,),
     ])
     def test_reading_submatrix_from_state(self, split_level):
         self.set_up_conf(split_level)
@@ -86,8 +91,18 @@ class TestMatrices(unittest.TestCase):
         subdivide_matrix_into_state(self.conf, mat_a, self.key_a)
         subdivide_matrix_into_state(self.conf, mat_b, self.key_b)
 
-        row_idx = 2
-        col_idx = 3
+        if split_level == 0:
+            row_idx = 0
+            col_idx = 0
+        elif split_level == 1:
+            row_idx = 1
+            col_idx = 1
+        elif split_level == 2:
+            row_idx = 3
+            col_idx = 2
+        else:
+            row_idx = 5
+            col_idx = 6
 
         sm_size = self.conf.get_submatrix_size(split_level)
 
@@ -111,7 +126,7 @@ class TestMatrices(unittest.TestCase):
         np.testing.assert_array_equal(expected_b, actual_b)
 
     @parameterized.expand([
-        (2,), (3,), (4,),
+        (0,), (1,), (2,), (3,),
     ])
     def test_distributed_multiplication(self, split_level):
         self.set_up_conf(split_level)
