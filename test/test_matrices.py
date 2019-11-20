@@ -12,7 +12,7 @@ from pyfaasm.config import RESULT_MATRIX_KEY
 from pyfaasm.core import setEmulatorMessage, getState
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
     read_input_submatrix, divide_and_conquer, write_matrix_params_to_state, \
-    load_matrix_conf_from_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B
+    load_matrix_conf_from_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, random_matrix
 from pyfaasm.matrix_data import subdivide_matrix_into_files, reconstruct_matrix_from_files
 
 
@@ -47,7 +47,7 @@ class TestMatrices(unittest.TestCase):
         self.assertEqual(self.conf.n_splits, split_level)
 
     def test_matrix_round_trip(self):
-        mat_a = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
+        mat_a = random_matrix(self.conf.matrix_size)
         subdivide_matrix_into_state(self.conf, mat_a, self.key_a)
         actual = reconstruct_matrix_from_submatrices(self.conf, self.key_a)
 
@@ -59,8 +59,8 @@ class TestMatrices(unittest.TestCase):
     def test_matrix_file_round_trip(self, split_level):
         self.set_up_conf(split_level)
 
-        mat_a = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
-        mat_b = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
+        mat_a = random_matrix(self.conf.matrix_size)
+        mat_b = random_matrix(self.conf.matrix_size)
 
         file_dir = "/tmp/mat_test"
         file_prefix_a = "mat_a"
@@ -85,8 +85,8 @@ class TestMatrices(unittest.TestCase):
     def test_reading_submatrix_from_state(self, split_level):
         self.set_up_conf(split_level)
 
-        mat_a = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
-        mat_b = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
+        mat_a = random_matrix(self.conf.matrix_size)
+        mat_b = random_matrix(self.conf.matrix_size)
 
         subdivide_matrix_into_state(self.conf, mat_a, self.key_a)
         subdivide_matrix_into_state(self.conf, mat_b, self.key_b)
@@ -132,8 +132,8 @@ class TestMatrices(unittest.TestCase):
         self.set_up_conf(split_level)
 
         # Set up the problem
-        mat_a = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
-        mat_b = np.random.rand(self.conf.matrix_size, self.conf.matrix_size)
+        mat_a = random_matrix(self.conf.matrix_size)
+        mat_b = random_matrix(self.conf.matrix_size)
         subdivide_matrix_into_state(self.conf, mat_a, SUBMATRICES_KEY_A)
         subdivide_matrix_into_state(self.conf, mat_b, SUBMATRICES_KEY_B)
 
@@ -144,7 +144,7 @@ class TestMatrices(unittest.TestCase):
 
         # Load the result
         actual_bytes = getState(RESULT_MATRIX_KEY, self.conf.bytes_per_matrix)
-        actual = np.frombuffer(actual_bytes).reshape(self.conf.matrix_size, self.conf.matrix_size)
+        actual = np.frombuffer(actual_bytes, dtype=np.float32).reshape(self.conf.matrix_size, self.conf.matrix_size)
 
         # Note that the floating point errors can creep up so we have a relatively high tolerance here
-        np.testing.assert_array_almost_equal_nulp(actual, expected, nulp=10)
+        np.testing.assert_array_almost_equal_nulp(actual, expected, nulp=20)

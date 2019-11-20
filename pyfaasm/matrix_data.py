@@ -57,7 +57,7 @@ def do_reconstruct_matrix(conf, read_func):
         submatrices = []
         for col_idx in range(0, sm_per_row):
             sm_data = read_func(row_idx, col_idx)
-            this_submat = np.frombuffer(sm_data)
+            this_submat = np.frombuffer(sm_data, dtype=np.float32)
             this_submat = this_submat.reshape(sm_size, sm_size)
             submatrices.append(this_submat)
 

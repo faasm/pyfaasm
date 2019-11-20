@@ -26,6 +26,10 @@ def load_matrix_conf_from_state():
     return conf
 
 
+def random_matrix(size):
+    return np.random.rand(size, size).astype(np.float32)
+
+
 # Split up the original matrix into square submatrices and write to state
 def subdivide_matrix_into_state(conf, mat, key_prefix):
     def _write_submatrix_to_state(sm_bytes, row_idx, col_idx):
@@ -42,7 +46,7 @@ def read_input_submatrix(conf, key_prefix, row_idx, col_idx):
     full_key = conf.get_submatrix_key(key_prefix, conf.n_splits, row_idx, col_idx)
 
     sub_mat_data = getState(full_key, sm_bytes)
-    return np.frombuffer(sub_mat_data).reshape(sm_size, sm_size)
+    return np.frombuffer(sub_mat_data, dtype=np.float32).reshape(sm_size, sm_size)
 
 
 # Rebuilds a matrix from its submatrices in state
@@ -126,10 +130,10 @@ def get_addition_result(conf, split_level, addition_def):
                                              )
 
     bytes_a = getState(key_a, sm_byte_szie)
-    mat_a = np.frombuffer(bytes_a).reshape(sm_size, sm_size)
+    mat_a = np.frombuffer(bytes_a, dtype=np.float32).reshape(sm_size, sm_size)
 
     bytes_b = getState(key_b, sm_byte_szie)
-    mat_b = np.frombuffer(bytes_b).reshape(sm_size, sm_size)
+    mat_b = np.frombuffer(bytes_b, dtype=np.float32).reshape(sm_size, sm_size)
 
     return mat_a + mat_b
 

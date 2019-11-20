@@ -1,5 +1,5 @@
-# NOTE: we are assuming numpy floats are 8 bytes here
-NP_ELEMENT_SIZE = 8
+# NOTE: we are careful to use 32-bit floats to ease interoperability with wasm code
+NP_ELEMENT_SIZE = 4
 
 SUBMATRICES_KEY_A = "mat_a"
 SUBMATRICES_KEY_B = "mat_b"
