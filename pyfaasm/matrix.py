@@ -117,7 +117,7 @@ def divide_and_conquer():
 
 def get_addition_result(conf, split_level, addition_def):
     sm_size = conf.get_submatrix_size(split_level)
-    sm_byte_szie = conf.get_bytes_per_submatrix(split_level)
+    sm_byte_size = conf.get_bytes_per_submatrix(split_level)
 
     key_a = conf.get_intermediate_result_key(split_level,
                                              addition_def[0][0][0], addition_def[0][0][1],
@@ -129,10 +129,10 @@ def get_addition_result(conf, split_level, addition_def):
                                              addition_def[1][1][0], addition_def[1][1][1],
                                              )
 
-    bytes_a = getState(key_a, sm_byte_szie)
+    bytes_a = getState(key_a, sm_byte_size)
     mat_a = np.frombuffer(bytes_a, dtype=np.float32).reshape(sm_size, sm_size)
 
-    bytes_b = getState(key_b, sm_byte_szie)
+    bytes_b = getState(key_b, sm_byte_size)
     mat_b = np.frombuffer(bytes_b, dtype=np.float32).reshape(sm_size, sm_size)
 
     return mat_a + mat_b
