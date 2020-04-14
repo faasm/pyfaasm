@@ -47,13 +47,10 @@ void __faasm_pull_state(const char *key, long stateLen);
 
 // ------ Faasm chaining ------
 FAASM_IMPORT
-unsigned int __faasm_chain_py(int idx, const unsigned char *inputData, long inputDataSize);
+unsigned int __faasm_chain_py(const char* name, const unsigned char *inputData, long inputDataSize);
 
 FAASM_IMPORT
 int __faasm_await_call(unsigned int messageId);
-
-FAASM_IMPORT
-int __faasm_get_py_idx();
 
 // ------ Faasm emulator API ------
 FAASM_IMPORT
@@ -237,14 +234,14 @@ static PyObject *faasm_pull_state(PyObject *self, PyObject *args) {
 // ----------------------------------
 
 static PyObject *faasm_chain_this(PyObject *self, PyObject *args) {
-    int functionIdx = 0;
+    char* functionName = NULL;
     PyObject* inputData = NULL;
-    if(!PyArg_ParseTuple(args, "iS", &functionIdx, &inputData)) {
+    if(!PyArg_ParseTuple(args, "SS", &functionName, &inputData)) {
         return NULL;
     }
 
     int callId = __faasm_chain_py(
-        functionIdx,
+        functionName,
         (unsigned char*) PyBytes_AsString(inputData),
         PyBytes_Size(inputData)
     );
@@ -270,11 +267,6 @@ static PyObject *faasm_await_call(PyObject *self, PyObject *args) {
     Py_END_ALLOW_THREADS
 
     return Py_BuildValue("i", result);
-}
-
-static PyObject *faasm_get_idx(PyObject *self) {
-    int idx = (int) __faasm_get_py_idx();
-    return Py_BuildValue("i", idx);
 }
 
 // ----------------------------------
@@ -324,7 +316,6 @@ static PyMethodDef cfaasm_methods[] = {
         {"faasm_pull_state", (PyCFunction) faasm_pull_state, METH_VARARGS, NULL},
         {"faasm_chain_this", (PyCFunction) faasm_chain_this, METH_VARARGS, NULL},
         {"faasm_await_call", (PyCFunction) faasm_await_call, METH_VARARGS, NULL},
-        {"faasm_get_idx", (PyCFunction) faasm_get_idx, METH_NOARGS, NULL},
         {"set_emulator_message", (PyCFunction) set_emulator_message, METH_VARARGS, NULL},
         {"set_emulator_status", (PyCFunction) set_emulator_status, METH_VARARGS, NULL},
         {"get_emulator_async_response", (PyCFunction) get_emulator_async_response, METH_NOARGS, NULL},

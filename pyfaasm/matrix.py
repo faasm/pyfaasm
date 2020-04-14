@@ -2,7 +2,7 @@ import numpy as np
 from numpy import int32
 
 from pyfaasm.config import MATRIX_CONF_STATE_KEY, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, MatrixConf, RESULT_MATRIX_KEY
-from pyfaasm.core import set_state, get_state, chain_this_with_input, await_call, register_function
+from pyfaasm.core import set_state, get_state, chain_this_with_input, await_call
 from pyfaasm.matrix_data import do_subdivide_matrix, do_reconstruct_matrix
 
 
@@ -95,9 +95,6 @@ def divide_and_conquer():
         conf.matrix_size,
         conf.n_splits
     ))
-
-    # To keep things working in native python
-    register_function(1, distributed_divide_and_conquer)
 
     # Short-cut for no splits
     if conf.n_splits == 0:

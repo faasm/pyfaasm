@@ -5,29 +5,9 @@ import pyfaasm.cfaasm as cf
 PYTHON_LOCAL_CHAINING = bool(os.environ.get("PYTHON_LOCAL_CHAINING"))
 PYTHON_LOCAL_OUTPUT = bool(os.environ.get("PYTHON_LOCAL_OUTPUT"))
 
-REGISTERED_FUNCTIONS = {}
-
 input_data = None
 output_data = None
 func_idx = 0
-
-
-# Faasm function decorator
-def faasm_func(func_idx):
-    def func_decorator(func):
-        def wrapper():
-            return "faasm_func"
-        return wrapper
-    return func_decorator
-
-
-# Faasm main decorator
-def faasm_main():
-    def main_decorator(func):
-        def wrapper():
-            return "faasm_main"
-        return wrapper
-    return main_decorator
 
 
 def set_local_chaining(value):
@@ -38,16 +18,6 @@ def set_local_chaining(value):
 def set_local_input_output(value):
     global PYTHON_LOCAL_OUTPUT
     PYTHON_LOCAL_OUTPUT = value
-
-
-def register_function(idx, func):
-    global REGISTERED_FUNCTIONS
-    REGISTERED_FUNCTIONS[idx] = func
-
-
-def clear_registered_functions():
-    global REGISTERED_FUNCTIONS
-    REGISTERED_FUNCTIONS = {}
 
 
 def check_python_bindings():
@@ -62,9 +32,6 @@ def check_python_bindings():
         print("Got expected input {} (expected {})".format(actual_input, expected_input))
     else:
         print("Did not get expected input (expected {}, actual {})".format(expected_input, actual_input))
-
-    # Check function index
-    print("Function idx = {}".format(get_function_idx()))
 
 
 def get_input():
@@ -115,18 +82,15 @@ def pull_state(key, state_len):
     cf.faasm_pull_state(key, state_len)
 
 
-def get_function_idx():
-    return cf.faasm_get_idx()
-
-
-def chain_this_with_input(function_idx, input_data):
+def chain_this_with_input(func, input_data):
     if PYTHON_LOCAL_CHAINING:
         # Run function directly
-        REGISTERED_FUNCTIONS[function_idx](input_data)
+        func(input_data)
         return 0
     else:
         # Call native
-        return cf.faasm_chain_this(function_idx, input_data)
+        func_name = func.__name__
+        return cf.faasm_chain_this(func_name, input_data)
 
 
 def await_call(call_id):
