@@ -186,7 +186,10 @@ def chain_multiplications(conf, split_level, row_a, col_a, row_b, col_b):
             submatrix_b[0], submatrix_b[1],
         ], dtype=int32)
 
-        call_ids.append(chain_this_with_input(1, inputs_a.tobytes()))
+        call_ids.append(chain_this_with_input(
+            distributed_divide_and_conquer,
+            inputs_a.tobytes())
+        )
 
     # Await completion
     for call_id in call_ids:

@@ -7,7 +7,6 @@ PYTHON_LOCAL_OUTPUT = bool(os.environ.get("PYTHON_LOCAL_OUTPUT"))
 
 input_data = None
 output_data = None
-func_idx = 0
 
 
 def set_local_chaining(value):
