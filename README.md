@@ -8,10 +8,12 @@ To test integration with Faasm via the emulator, in the Faasm project root:
 
 ```
 source workon.sh
-inv install-native-tools
+inv libs.native
 ```
 
 ## Build and test
+
+From this project root:
 
 ```
 # Venv
@@ -26,6 +28,12 @@ pip install -e .
 
 # Run tests
 ./run_tests.sh
+```
+
+If you make changes to the C-extensions you need to rerun:
+
+```
+pip install -e .
 ```
 
 ## Publishing

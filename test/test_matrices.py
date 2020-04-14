@@ -9,7 +9,7 @@ import redis
 from parameterized import parameterized
 
 from pyfaasm.config import RESULT_MATRIX_KEY
-from pyfaasm.core import setEmulatorMessage, getState
+from pyfaasm.core import set_emulator_message, get_state
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
     read_input_submatrix, divide_and_conquer, write_matrix_params_to_state, \
     load_matrix_conf_from_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, random_matrix
@@ -31,7 +31,7 @@ class TestMatrices(unittest.TestCase):
             "py_func": "mat_mul",
         }
         msg_json = dumps(msg)
-        setEmulatorMessage(msg_json)
+        set_emulator_message(msg_json)
 
         # Default matrix set-up
         self.matrix_size = 1024
@@ -143,7 +143,7 @@ class TestMatrices(unittest.TestCase):
         divide_and_conquer()
 
         # Load the result
-        actual_bytes = getState(RESULT_MATRIX_KEY, self.conf.bytes_per_matrix)
+        actual_bytes = get_state(RESULT_MATRIX_KEY, self.conf.bytes_per_matrix)
         actual = np.frombuffer(actual_bytes, dtype=np.float32).reshape(self.conf.matrix_size, self.conf.matrix_size)
 
         # Note that the floating point errors can creep up so we have a relatively high tolerance here
