@@ -72,7 +72,7 @@ Finally, in a new shell at the root of the Faasm project you need to run:
 ```
 source workon.sh
 pip install -U pyfaasm
-inv set-up-python-package pyfaasm
+inv python.set-up-package pyfaasm
 ```
 
 Once you're finally happy you need to update the remote copy of the runtime root, i.e.:
