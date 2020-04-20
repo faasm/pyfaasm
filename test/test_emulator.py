@@ -1,8 +1,8 @@
 import unittest
 from json import dumps
 
-from pyfaasm.core import setLocalInputOutput, \
-    setEmulatorMessage, getOutput, setOutput, PYTHON_LOCAL_OUTPUT
+from pyfaasm.core import set_local_input_output, \
+    set_emulator_message, get_output, set_output, PYTHON_LOCAL_OUTPUT
 
 
 class TestEmulator(unittest.TestCase):
@@ -16,10 +16,10 @@ class TestEmulator(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         # Reset to original local output value
-        setLocalInputOutput(cls.original_local_output)
+        set_local_input_output(cls.original_local_output)
 
     def test_local_output(self):
-        setLocalInputOutput(True)
+        set_local_input_output(True)
 
         # Set up the function
         msg = {
@@ -29,28 +29,28 @@ class TestEmulator(unittest.TestCase):
             "py_func": "echo",
         }
         json_msg = dumps(msg)
-        setEmulatorMessage(json_msg)
+        set_emulator_message(json_msg)
 
         # Check output is initially empty
-        self.assertIsNone(getOutput())
+        self.assertIsNone(get_output())
 
         # Set output and check
         output_a = b'12345'
-        setOutput(output_a)
-        self.assertEqual(getOutput(), output_a)
+        set_output(output_a)
+        self.assertEqual(get_output(), output_a)
 
         # Set output again and check updated
         output_b = b'666777'
-        setOutput(output_b)
-        self.assertEqual(getOutput(), output_b)
+        set_output(output_b)
+        self.assertEqual(get_output(), output_b)
 
     def test_changing_function_clears_local_output(self):
-        setLocalInputOutput(True)
+        set_local_input_output(True)
 
         # Set output and check
         output_a = b'12345'
-        setOutput(output_a)
-        self.assertEqual(getOutput(), output_a)
+        set_output(output_a)
+        self.assertEqual(get_output(), output_a)
 
         # Change function
         msg = {
@@ -58,10 +58,10 @@ class TestEmulator(unittest.TestCase):
             "function": "bar",
         }
         json_msg = dumps(msg)
-        setEmulatorMessage(json_msg)
+        set_emulator_message(json_msg)
 
         # Check output is now empty
-        self.assertIsNone(getOutput())
+        self.assertIsNone(get_output())
 
     def test_setting_emulator_message_returns_id(self):
         msg = {
@@ -69,6 +69,6 @@ class TestEmulator(unittest.TestCase):
             "function": "bar",
         }
         json_msg = dumps(msg)
-        actual = setEmulatorMessage(json_msg)
+        actual = set_emulator_message(json_msg)
 
         self.assertGreater(actual, 0)

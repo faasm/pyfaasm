@@ -1,19 +1,19 @@
-from pyfaasm.core import checkPythonBindings
-from pyfaasm.core import getState, getStateOffset, setState, setStateOffset, pushState, pullState
+from pyfaasm.core import check_python_bindings
+from pyfaasm.core import get_state, get_state_offset, set_state, set_state_offset, push_state, pull_state
 
 # Initial check
-checkPythonBindings()
+check_python_bindings()
 
 # Write and push state
 key = "pyStateTest"
 valueLen = 10
 fullValue = b'0123456789'
-setState(key, fullValue)
-pushState(key)
+set_state(key, fullValue)
+push_state(key)
 
 # Read state back in
-pullState(key, valueLen)
-actual = getState(key, valueLen)
+pull_state(key, valueLen)
+actual = get_state(key, valueLen)
 print("In = {}  out = {}".format(fullValue, actual))
 
 # Update a segment
@@ -21,11 +21,11 @@ segment = b'999'
 offset = 2
 segmentLen = 3
 modifiedValue = b'0199956789'
-setStateOffset(key, valueLen, offset, segment)
-pushState(key)
+set_state_offset(key, valueLen, offset, segment)
+push_state(key)
 
-pullState(key, valueLen)
-actual = getState(key, valueLen)
-actualSegment = getStateOffset(key, valueLen, offset, segmentLen)
+pull_state(key, valueLen)
+actual = get_state(key, valueLen)
+actualSegment = get_state_offset(key, valueLen, offset, segmentLen)
 print("Expected = {}  actual = {}".format(modifiedValue, actual))
 print("Expected = {}  actual = {}".format(segment, actualSegment))

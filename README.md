@@ -8,10 +8,12 @@ To test integration with Faasm via the emulator, in the Faasm project root:
 
 ```
 source workon.sh
-inv install-native-tools
+inv libs.native
 ```
 
 ## Build and test
+
+From this project root:
 
 ```
 # Venv
@@ -26,6 +28,12 @@ pip install -e .
 
 # Run tests
 ./run_tests.sh
+```
+
+If you make changes to the C-extensions you need to rerun:
+
+```
+pip install -e .
 ```
 
 ## Publishing
@@ -64,11 +72,8 @@ Finally, in a new shell at the root of the Faasm project you need to run:
 ```
 source workon.sh
 pip install -U pyfaasm
-inv set-up-python-package pyfaasm
+inv python.set-up-package pyfaasm
 ```
 
-Once you're finally happy you need to update the remote copy of the runtime root, i.e.:
-
-```
-inv backup-runtime-root
-```
+Note that changes to pyfaasm must be included in a new Faasm release to be 
+generally available.

@@ -5,34 +5,21 @@ import pyfaasm.cfaasm as cf
 PYTHON_LOCAL_CHAINING = bool(os.environ.get("PYTHON_LOCAL_CHAINING"))
 PYTHON_LOCAL_OUTPUT = bool(os.environ.get("PYTHON_LOCAL_OUTPUT"))
 
-REGISTERED_FUNCTIONS = {}
-
 input_data = None
 output_data = None
-func_idx = 0
 
 
-def setLocalChaining(value):
+def set_local_chaining(value):
     global PYTHON_LOCAL_CHAINING
     PYTHON_LOCAL_CHAINING = value
 
 
-def setLocalInputOutput(value):
+def set_local_input_output(value):
     global PYTHON_LOCAL_OUTPUT
     PYTHON_LOCAL_OUTPUT = value
 
 
-def registerFunction(idx, func):
-    global REGISTERED_FUNCTIONS
-    REGISTERED_FUNCTIONS[idx] = func
-
-
-def clearRegisteredFunctions():
-    global REGISTERED_FUNCTIONS
-    REGISTERED_FUNCTIONS = {}
-
-
-def checkPythonBindings():
+def check_python_bindings():
     # This should return a valid string
     message = cf.hello_faasm()
     print(message)
@@ -45,15 +32,12 @@ def checkPythonBindings():
     else:
         print("Did not get expected input (expected {}, actual {})".format(expected_input, actual_input))
 
-    # Check function index
-    print("Function idx = {}".format(getFunctionIdx()))
 
-
-def getInput():
+def get_input():
     return cf.faasm_get_input()
 
 
-def setOutput(output):
+def set_output(output):
     if PYTHON_LOCAL_OUTPUT:
         global output_data
         output_data = output
@@ -61,7 +45,7 @@ def setOutput(output):
         cf.faasm_set_output(output)
 
 
-def getOutput():
+def get_output():
     if PYTHON_LOCAL_OUTPUT:
         global output_data
         return output_data
@@ -69,49 +53,46 @@ def getOutput():
         raise RuntimeError("Should not be getting output in non-local input/ output")
 
 
-def getState(key, len):
+def get_state(key, len):
     return cf.faasm_get_state(key, len)
 
 
-def getStateOffset(key, total_len, offset, offset_len):
+def get_state_offset(key, total_len, offset, offset_len):
     return cf.faasm_get_state_offset(key, total_len, offset, offset_len)
 
 
-def setState(key, value):
+def set_state(key, value):
     cf.faasm_set_state(key, value)
 
 
-def setStateOffset(key, total_len, offset, value):
+def set_state_offset(key, total_len, offset, value):
     cf.faasm_set_state_offset(key, total_len, offset, value)
 
 
-def pushState(key):
+def push_state(key):
     cf.faasm_push_state(key)
 
 
-def pushStatePartial(key):
+def push_state_partial(key):
     cf.faasm_push_state_partial(key)
 
 
-def pullState(key, state_len):
+def pull_state(key, state_len):
     cf.faasm_pull_state(key, state_len)
 
 
-def getFunctionIdx():
-    return cf.faasm_get_idx()
-
-
-def chainThisWithInput(function_idx, input_data):
+def chain_this_with_input(func, chained_input_data):
     if PYTHON_LOCAL_CHAINING:
         # Run function directly
-        REGISTERED_FUNCTIONS[function_idx](input_data)
+        func(chained_input_data)
         return 0
     else:
         # Call native
-        return cf.faasm_chain_this(function_idx, input_data)
+        func_name = func.__name__
+        return cf.faasm_chain_this(func_name, chained_input_data)
 
 
-def awaitCall(call_id):
+def await_call(call_id):
     if PYTHON_LOCAL_CHAINING:
         # Calls are run immediately
         return 0
@@ -120,17 +101,17 @@ def awaitCall(call_id):
         return cf.faasm_await_call(call_id)
 
 
-def setEmulatorMessage(messageJson):
+def set_emulator_message(message_json):
     if PYTHON_LOCAL_OUTPUT:
         global output_data
         output_data = None
 
-    return cf.set_emulator_message(messageJson)
+    return cf.set_emulator_message(message_json)
 
 
-def emulatorSetStatus(success):
+def set_emulator_status(success):
     cf.set_emulator_status(success)
 
 
-def emulatorGetAsyncResponse():
+def get_emulator_async_response():
     return cf.get_emulator_async_response()
