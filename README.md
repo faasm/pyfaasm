@@ -75,8 +75,5 @@ pip install -U pyfaasm
 inv python.set-up-package pyfaasm
 ```
 
-Once you're finally happy you need to update the remote copy of the runtime root, i.e.:
-
-```
-inv backup-runtime-root
-```
+Note that changes to pyfaasm must be included in a new Faasm release to be 
+generally available.
