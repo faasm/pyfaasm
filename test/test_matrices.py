@@ -9,7 +9,7 @@ import redis
 from parameterized import parameterized
 
 from pyfaasm.config import RESULT_MATRIX_KEY
-from pyfaasm.core import set_emulator_message, get_state
+from pyfaasm.core import set_emulator_message, get_state, set_local_chaining
 from pyfaasm.matrix import subdivide_matrix_into_state, reconstruct_matrix_from_submatrices, \
     read_input_submatrix, divide_and_conquer, write_matrix_params_to_state, \
     load_matrix_conf_from_state, SUBMATRICES_KEY_A, SUBMATRICES_KEY_B, random_matrix
@@ -37,6 +37,9 @@ class TestMatrices(unittest.TestCase):
         self.matrix_size = 1024
         self.default_split_level = 3
         self.set_up_conf(3)
+
+        # Enforce local chaining
+        set_local_chaining(True)
 
     def set_up_conf(self, split_level):
         # Write and read config
