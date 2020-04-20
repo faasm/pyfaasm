@@ -53,6 +53,10 @@ def get_output():
         raise RuntimeError("Should not be getting output in non-local input/ output")
 
 
+def get_state_size(key):
+    return cf.faasm_get_state_size(key)
+
+
 def get_state(key, len):
     return cf.faasm_get_state(key, len)
 
