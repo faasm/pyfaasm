@@ -236,7 +236,7 @@ static PyObject *faasm_pull_state(PyObject *self, PyObject *args) {
 static PyObject *faasm_chain_this(PyObject *self, PyObject *args) {
     char* functionName = NULL;
     PyObject* inputData = NULL;
-    if(!PyArg_ParseTuple(args, "SS", &functionName, &inputData)) {
+    if(!PyArg_ParseTuple(args, "sS", &functionName, &inputData)) {
         return NULL;
     }
 

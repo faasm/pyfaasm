@@ -81,15 +81,15 @@ def pull_state(key, state_len):
     cf.faasm_pull_state(key, state_len)
 
 
-def chain_this_with_input(func, input_data):
+def chain_this_with_input(func, chained_input_data):
     if PYTHON_LOCAL_CHAINING:
         # Run function directly
-        func(input_data)
+        func(chained_input_data)
         return 0
     else:
         # Call native
         func_name = func.__name__
-        return cf.faasm_chain_this(func_name, input_data)
+        return cf.faasm_chain_this(func_name, chained_input_data)
 
 
 def await_call(call_id):
@@ -101,12 +101,12 @@ def await_call(call_id):
         return cf.faasm_await_call(call_id)
 
 
-def set_emulator_message(messageJson):
+def set_emulator_message(message_json):
     if PYTHON_LOCAL_OUTPUT:
         global output_data
         output_data = None
 
-    return cf.set_emulator_message(messageJson)
+    return cf.set_emulator_message(message_json)
 
 
 def set_emulator_status(success):
