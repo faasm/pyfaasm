@@ -6,17 +6,19 @@ try:
 except ImportError:
     from distutils.core import setup, Extension
 
-# Detect whether this is a wasm build
-if environ.get("WASM_CC"):
-    is_wasm_build = True
-else:
-    is_wasm_build = False
+PKG_NAME = "pyfaasm"
+FAASM_LIBS = ["faasm", "emulator"]
+FAASM_INSTALL = "/usr/local"
 
 
 def main():
-    PKG_NAME = "pyfaasm"
-    FAASM_LIBS = ["faasm", "emulator"]
-    FAASM_INSTALL = "/usr/local"
+    # Detect whether this is a wasm build
+    if environ.get("PYTHON_CROSSENV"):
+        print("Detected WebAssembly build")
+        is_wasm_build = True
+    else:
+        print("Detected native build")
+        is_wasm_build = False
 
     extension_kwargs = {
         "sources": ["pyfaasm/cfaasm.c"],
@@ -30,19 +32,25 @@ def main():
             "include_dirs": [join(FAASM_INSTALL, "include")],
         })
 
+    long_description = """
+## Faasm Python Bindings
+See main repo at https://github.com/lsds/faasm
+    """
+
     setup(
         name=PKG_NAME,
         packages=[PKG_NAME],
         version="0.1.9",
         description="Python interface for Faasm",
-        long_description="""## Faasm Python bindings\nSee main repo at https://github.com/lsds/Faasm.""",
+        long_description=long_description,
         long_description_content_type="text/markdown",
         author="Simon S",
         author_email="foo@bar.com",
-        url="https://github.com/lsds/Faasm",
+        url="https://github.com/lsds/faasm",
         ext_modules=[Extension("pyfaasm.cfaasm", **extension_kwargs)]
     )
 
 
 if __name__ == "__main__":
     main()
+
