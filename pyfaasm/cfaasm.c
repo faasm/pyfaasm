@@ -22,7 +22,7 @@ void __faasm_write_output(const unsigned char *output, long outputLen);
 // ------ Faasm state ------
 
 FAASM_IMPORT
-void __faasm_read_state(const char *key, unsigned char *buffer, long bufferLen);
+long __faasm_read_state(const char *key, unsigned char *buffer, long bufferLen);
 
 FAASM_IMPORT
 unsigned char *__faasm_read_state_ptr(const char *key, long totalLen);
@@ -127,6 +127,17 @@ static PyObject *faasm_set_output(PyObject *self, PyObject *args) {
 // ----------------------------------
 // State
 // ----------------------------------
+
+// Get whole state size
+static PyObject *faasm_get_state_size(PyObject *self, PyObject *args) {
+    char* key = NULL;
+    if(!PyArg_ParseTuple(args, "s", &key)) {
+        return NULL;
+    }
+
+    long stateSize = __faasm_read_state(key, NULL, 0);
+    return Py_BuildValue("i", stateSize);
+}
 
 // Get whole state value
 static PyObject *faasm_get_state(PyObject *self, PyObject *args) {
@@ -309,6 +320,7 @@ static PyMethodDef cfaasm_methods[] = {
         {"faasm_set_output", (PyCFunction) faasm_set_output, METH_VARARGS, NULL},
         {"faasm_get_state", (PyCFunction) faasm_get_state, METH_VARARGS, NULL},
         {"faasm_get_state_offset", (PyCFunction) faasm_get_state_offset, METH_VARARGS, NULL},
+        {"faasm_get_state_size", (PyCFunction) faasm_get_state_size, METH_VARARGS, NULL},
         {"faasm_set_state", (PyCFunction) faasm_set_state, METH_VARARGS, NULL},
         {"faasm_set_state_offset", (PyCFunction) faasm_set_state_offset, METH_VARARGS, NULL},
         {"faasm_push_state", (PyCFunction) faasm_push_state, METH_VARARGS, NULL},

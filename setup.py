@@ -40,7 +40,7 @@ See main repo at https://github.com/lsds/faasm
     setup(
         name=PKG_NAME,
         packages=[PKG_NAME],
-        version="0.1.9",
+        version="0.1.10",
         description="Python interface for Faasm",
         long_description=long_description,
         long_description_content_type="text/markdown",
