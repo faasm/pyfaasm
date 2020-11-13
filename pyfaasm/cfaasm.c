@@ -244,7 +244,7 @@ static PyObject *faasm_pull_state(PyObject *self, PyObject *args) {
 // Chaining
 // ----------------------------------
 
-static PyObject *faasm_chain_this(PyObject *self, PyObject *args) {
+static PyObject *faasm_chain_py(PyObject *self, PyObject *args) {
     char* functionName = NULL;
     PyObject* inputData = NULL;
     if(!PyArg_ParseTuple(args, "sS", &functionName, &inputData)) {
@@ -326,7 +326,7 @@ static PyMethodDef cfaasm_methods[] = {
         {"faasm_push_state", (PyCFunction) faasm_push_state, METH_VARARGS, NULL},
         {"faasm_push_state_partial", (PyCFunction) faasm_push_state_partial, METH_VARARGS, NULL},
         {"faasm_pull_state", (PyCFunction) faasm_pull_state, METH_VARARGS, NULL},
-        {"faasm_chain_this", (PyCFunction) faasm_chain_this, METH_VARARGS, NULL},
+        {"faasm_chain_py", (PyCFunction) faasm_chain_py, METH_VARARGS, NULL},
         {"faasm_await_call", (PyCFunction) faasm_await_call, METH_VARARGS, NULL},
         {"set_emulator_message", (PyCFunction) set_emulator_message, METH_VARARGS, NULL},
         {"set_emulator_status", (PyCFunction) set_emulator_status, METH_VARARGS, NULL},

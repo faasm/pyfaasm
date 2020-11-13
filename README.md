@@ -2,78 +2,35 @@
 
 Python bindings for [Faasm](https://github.com/lsds/Faasm) host interface.
 
-## Installing native Faasm tools
+## Developing
 
-To test integration with Faasm via the emulator, in the Faasm project root:
+This library will eventually be compiled to WebAssembly, but to develop it you
+will need to compile it locally against the Faasm native tools. 
 
-```
-source workon.sh
-inv libs.native
-```
+This is done using a Docker container which inherits from `faasm/native` (see
+the [`Dockerfile`](Dockerfile).
 
-## Build and test
+To build the container and run the tests:
 
-From this project root:
+```bash
+# Build the container
+python3 docker_build.py
 
-```
-# Venv
-python3 -m venv venv
-source venv/bin/activate
+# Run the container
+docker run -it -v $(pwd):/code/pyfaasm faasm/pyfaasm /bin/bash
 
-# Install deps
-pip install -r test_requirements.txt
-
-# Install this module locally
-pip install -e .
-
-# Run tests
+# Run the tests (inside the container)
 ./run_tests.sh
 ```
 
 If you make changes to the C-extensions you need to rerun:
 
 ```
-pip install -e .
+pip3 install -e .
 ```
 
-## Publishing
+## Updating in Faasm
 
-When publishing an update you'll need to bump the version in `setup.py`.
-
-```
-./release.sh
-```
-
-To avoid entering your PyPi password every time, set up `keyring` as described [here](https://pypi.org/project/twine/). It's basically:
-
-```
-apt install python3-dbus
-pip install keyring
-python -m keyring set https://upload.pypi.org/legacy/ <YOUR_USERNAME>
-```
-
-## Updating in Pyodide and Faasm
-
-Run the following in Faasm:
-
-```
-cd third-party/pyodide
-source workon.sh
-cd packages
-rm -rf pyfaasm/build
-../bin/pyodide mkpkg pyfaasm
-../bin/pyodide buildpkg --package_abi=0 pyfaasm/meta.yaml
-```
-
-Make sure the output of the last function references the latest version.
-
-Finally, in a new shell at the root of the Faasm project you need to run:
- 
-```
-source workon.sh
-pip install -U pyfaasm
-inv python.set-up-package pyfaasm
-```
-
-Note that changes to pyfaasm must be included in a new Faasm release to be 
-generally available.
+This repo is build as part of the 
+[`faasm-cpython` repo](https://github.com/faasm/faasm-cpython). See the
+instructions in there.

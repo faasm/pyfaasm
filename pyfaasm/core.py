@@ -93,7 +93,7 @@ def chain_this_with_input(func, chained_input_data):
     else:
         # Call native
         func_name = func.__name__
-        return cf.faasm_chain_this(func_name, chained_input_data)
+        return cf.faasm_chain_py(func_name, chained_input_data)
 
 
 def await_call(call_id):
