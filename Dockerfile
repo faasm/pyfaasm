@@ -1,4 +1,4 @@
-FROM faasm/native:0.5.0
+FROM faasm/cpp-sysroot:0.0.13
 
 RUN apt-get install -y \
     python3-dev \
