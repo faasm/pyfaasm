@@ -7,9 +7,6 @@ Python bindings for [Faasm](https://github.com/lsds/Faasm) host interface.
 This library will eventually be compiled to WebAssembly, but to develop it you
 will need to compile it locally against the Faasm native tools. 
 
-This is done using a Docker container which inherits from `faasm/native` (see
-the [`Dockerfile`](Dockerfile).
-
 To build the container and run the tests:
 
 ```bash
