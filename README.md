@@ -2,13 +2,11 @@
 
 Python bindings for [Faasm](https://github.com/lsds/Faasm) host interface.
 
+The library is normally compiled to WebAssembly in the [faasm-cpython
+repo](https://github.com/faasm/faasm-cpython), but you can also compile it
+natively for development.
+
 ## Developing
-
-This library will eventually be compiled to WebAssembly, but to develop it you
-will need to compile it locally against the Faasm native tools. 
-
-This is done using a Docker container which inherits from `faasm/native` (see
-the [`Dockerfile`](Dockerfile).
 
 To build the container and run the tests:
 
@@ -28,9 +26,3 @@ If you make changes to the C-extensions you need to rerun:
 ```
 pip3 install -e .
 ```
-
-## Updating in Faasm
-
-This repo is build as part of the 
-[`faasm-cpython` repo](https://github.com/faasm/faasm-cpython). See the
-instructions in there.
